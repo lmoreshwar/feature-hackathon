@@ -18,7 +18,7 @@ import { UserModule } from './modules/user/user.module';
       useFactory: (config: ConfigService) => ({
         uri:
           config.get<string>('MONGO_URI') ??
-          process.env.MONGO_URI ??
+          config.get<string>('MONGODB_URI') ??
           'mongodb://localhost:27017/hackathon',
       }),
     }),

@@ -1,4 +1,10 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import mongoose, { Connection } from 'mongoose';
 
 @Injectable()
@@ -6,9 +12,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
   private connection: Connection;
 
-  private readonly uri =
-    process.env.MONGODB_URI ||
-    'mongodb://admin:SecurePassword123!@localhost:27017/myappdb?authSource=admin';
+  constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit(): Promise<void> {
     await this.connect();
@@ -19,8 +23,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect(): Promise<void> {
+    const uri =
+      this.configService.get<string>('MONGO_URI') ??
+      this.configService.get<string>('MONGODB_URI') ??
+      'mongodb://admin:SecurePassword123!@localhost:27017/hackathon_dev?authSource=admin';
+
     try {
-      await mongoose.connect(this.uri);
+      await mongoose.connect(uri);
       this.connection = mongoose.connection;
 
       this.connection.on('connected', () => {
