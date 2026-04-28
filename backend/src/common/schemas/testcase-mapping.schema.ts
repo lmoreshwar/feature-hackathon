@@ -6,7 +6,7 @@ export const TestCaseMappingSchema = new Schema(
   {
     featureId: { type: String, required: true, index: true, trim: true },
     testSuiteId: { type: String, required: true, index: true, trim: true },
-    testCaseId: { type: String, required: true, index: true, trim: true },
+    testCaseId: { type: String, required: true, trim: true },
 
     elementIds: { type: [String], default: [] },
 

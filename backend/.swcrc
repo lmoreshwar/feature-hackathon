@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/swcrc",
+  "sourceMaps": true,
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true,
+      "dynamicImport": true
+    },
+    "transform": {
+      "legacyDecorator": true,
+      "decoratorMetadata": true
+    },
+    "baseUrl": "./",
+    "target": "es2021",
+    "keepClassNames": true
+  },
+  "minify": false,
+  "module": {
+    "type": "commonjs"
+  },
+  "exclude": ["\\.spec\\.ts$", "\\.test\\.ts$"]
+}
