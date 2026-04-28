@@ -1,6 +1,15 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -13,15 +22,24 @@ import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { formatError } from '../../core/interceptors/error.interceptor';
-import { HttpErrorResponse } from '@angular/common/http';
 
-interface LoginForm {
+interface SignupForm {
   email: FormControl<string>;
   password: FormControl<string>;
+  confirmPassword: FormControl<string>;
 }
 
+const matchPassword: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
+  const password = group.get('password')?.value as string | undefined;
+  const confirm = group.get('confirmPassword')?.value as string | undefined;
+  if (!confirm) {
+    return null;
+  }
+  return password === confirm ? null : { passwordMismatch: true };
+};
+
 @Component({
-  selector: 'app-login',
+  selector: 'app-signup',
   standalone: true,
   imports: [
     ReactiveFormsModule,
@@ -35,26 +53,31 @@ interface LoginForm {
     NzIconModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss',
+  templateUrl: './signup.component.html',
+  styleUrl: './signup.component.scss',
 })
-export class LoginComponent implements OnInit {
+export class SignupComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected readonly form = this.fb.nonNullable.group<LoginForm>({
-    email: this.fb.nonNullable.control('', {
-      validators: [Validators.required, Validators.email],
-    }),
-    password: this.fb.nonNullable.control('', {
-      validators: [Validators.required, Validators.minLength(8)],
-    }),
-  });
+  protected readonly form = this.fb.nonNullable.group<SignupForm>(
+    {
+      email: this.fb.nonNullable.control('', {
+        validators: [Validators.required, Validators.email],
+      }),
+      password: this.fb.nonNullable.control('', {
+        validators: [Validators.required, Validators.minLength(8)],
+      }),
+      confirmPassword: this.fb.nonNullable.control('', {
+        validators: [Validators.required],
+      }),
+    },
+    { validators: matchPassword },
+  );
 
   ngOnInit(): void {
     if (this.authService.isAuthenticated()) {
@@ -81,12 +104,11 @@ export class LoginComponent implements OnInit {
     const value = this.form.getRawValue();
 
     this.authService
-      .login({ email: value.email.trim(), password: value.password })
+      .signup({ email: value.email.trim(), password: value.password })
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
         next: () => {
-          const redirect = this.route.snapshot.queryParamMap.get('redirect');
-          void this.router.navigateByUrl(redirect && redirect.startsWith('/') ? redirect : '/dashboard');
+          void this.router.navigateByUrl('/dashboard');
         },
         error: (error: unknown) => {
           this.errorMessage.set(this.toMessage(error));

@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { FeatureModule } from './modules/feature/feature.module';
 import { UserModule } from './modules/user/user.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { UserModule } from './modules/user/user.module';
       }),
     }),
     AuthModule,
+    FeatureModule,
     UserModule,
   ],
   controllers: [AppController],

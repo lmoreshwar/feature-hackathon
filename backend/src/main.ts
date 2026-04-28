@@ -90,6 +90,7 @@ async function bootstrap() {
     .addBearerAuth()
     .addTag('app')
     .addTag('auth')
+    .addTag('features')
     .addTag('users')
     .build();
 

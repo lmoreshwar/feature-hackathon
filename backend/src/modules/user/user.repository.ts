@@ -19,6 +19,12 @@ export interface ListUsersResult {
   total: number;
 }
 
+export interface SearchUsersParams {
+  pageIndex: number;
+  pageSize: number;
+  search?: string;
+}
+
 @Injectable()
 export class UserRepository {
   constructor(
@@ -78,6 +84,31 @@ export class UserRepository {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safeLimit)
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    return { items, total };
+  }
+
+  async searchUsers(params: SearchUsersParams): Promise<ListUsersResult> {
+    const safePageIndex = Math.max(1, Math.floor(params.pageIndex) || 1);
+    const safePageSize = Math.max(1, Math.min(100, Math.floor(params.pageSize) || 10));
+    const skip = (safePageIndex - 1) * safePageSize;
+
+    const filter: FilterQuery<UserDocument> = {};
+    if (params.search && params.search.trim().length > 0) {
+      const escaped = params.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.email = { $regex: escaped, $options: 'i' };
+    }
+
+    const [items, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .select('-passwordHash')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(safePageSize)
         .exec(),
       this.userModel.countDocuments(filter).exec(),
     ]);

@@ -1,9 +1,9 @@
-<div class="login-shell">
-  <nz-card class="login-card" [nzBordered]="false">
-    <div class="login-header">
+<div class="auth-shell">
+  <nz-card class="auth-card" [nzBordered]="false">
+    <div class="auth-header">
       <span class="brand-mark">HK</span>
-      <h1 class="brand-title">Hackathon Console</h1>
-      <p class="brand-subtitle">Sign in with your work email to continue.</p>
+      <h1 class="brand-title">Create your account</h1>
+      <p class="brand-subtitle">Sign up to access the Hackathon Console.</p>
     </div>
 
     @if (errorMessage(); as msg) {
@@ -11,7 +11,7 @@
         nzType="error"
         [nzMessage]="msg"
         nzShowIcon
-        class="login-alert"
+        class="auth-alert"
         [nzCloseable]="true"
         (nzOnClose)="errorMessage.set(null)"
       ></nz-alert>
@@ -50,8 +50,8 @@
                 nz-input
                 id="password"
                 type="password"
-                autocomplete="current-password"
-                placeholder="Your password"
+                autocomplete="new-password"
+                placeholder="At least 8 characters"
                 formControlName="password"
               />
             </nz-input-group>
@@ -65,6 +65,29 @@
           </nz-form-control>
         </nz-form-item>
 
+        <nz-form-item>
+          <nz-form-label nzRequired nzFor="confirmPassword">Confirm password</nz-form-label>
+          <nz-form-control [nzErrorTip]="confirmError">
+            <nz-input-group nzPrefixIcon="lock">
+              <input
+                nz-input
+                id="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Re-enter your password"
+                formControlName="confirmPassword"
+              />
+            </nz-input-group>
+            <ng-template #confirmError let-control>
+              @if (control.hasError('required')) {
+                Please re-enter your password.
+              } @else if (form.hasError('passwordMismatch')) {
+                Passwords do not match.
+              }
+            </ng-template>
+          </nz-form-control>
+        </nz-form-item>
+
         <button
           nz-button
           nzType="primary"
@@ -73,14 +96,14 @@
           [disabled]="submitting() || form.invalid"
           [nzLoading]="submitting()"
         >
-          Sign in
+          Create account
         </button>
       </form>
     </nz-spin>
 
-    <p class="login-footer">
-      Don't have an account?
-      <a routerLink="/signup">Create one</a>
+    <p class="auth-footer">
+      Already have an account?
+      <a routerLink="/login">Sign in</a>
     </p>
   </nz-card>
 </div>

@@ -26,6 +26,11 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface SignupRequest {
+  email: string;
+  password: string;
+}
+
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
@@ -55,6 +60,7 @@ export interface ApiEnvelope<T> {
 }
 
 export type LoginResponse = ApiEnvelope<AuthResponseData>;
+export type SignupResponse = ApiEnvelope<AuthUser>;
 export type RefreshTokenResponse = ApiEnvelope<RefreshTokenResponseData>;
 export type MeResponse = ApiEnvelope<AuthUser>;
 

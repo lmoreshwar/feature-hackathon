@@ -13,6 +13,13 @@ export const appRoutes: Routes = [
     title: 'Sign in · Hackathon Console',
   },
   {
+    path: 'signup',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./pages/signup/signup.component').then((m) => m.SignupComponent),
+    title: 'Create account · Hackathon Console',
+  },
+  {
     path: '',
     component: DashboardLayoutComponent,
     canActivate: [authGuard],
