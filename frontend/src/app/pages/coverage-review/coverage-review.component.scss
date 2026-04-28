@@ -1,0 +1,216 @@
+.card {
+  border-radius: 12px;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+  ::ng-deep .ant-card-body {
+    padding: 20px 22px;
+  }
+}
+
+.panel-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  &.with-meta {
+    flex-wrap: wrap;
+  }
+
+  .panel-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f0f7ff;
+    color: #1677ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .title-block {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .t {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .s {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+    margin-top: 2px;
+  }
+
+  .counts {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.source-picker {
+  display: flex;
+  width: 100%;
+  margin-bottom: 16px;
+
+  ::ng-deep label {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+/* ===== middle: gauge / metrics ===== */
+.panel-result {
+  .gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 4px 0 18px;
+
+    .gauge-label {
+      margin-top: 4px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  }
+
+  .empty-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+
+    .hint {
+      margin-top: 12px;
+      color: rgba(0, 0, 0, 0.55);
+      text-align: center;
+      font-size: 13px;
+    }
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .metric {
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+
+    .m-val {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: rgba(0, 0, 0, 0.88);
+
+      &.ok { color: #16a34a; }
+      &.warn { color: #d97706; }
+      &.danger { color: #dc2626; }
+    }
+
+    .m-lbl {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.55);
+      margin-top: 2px;
+    }
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+    border-top: 1px dashed #f0f0f0;
+    padding-top: 10px;
+
+    .src {
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+/* ===== right: approved test cases ===== */
+.panel-cases {
+  .cases-search {
+    margin-bottom: 12px;
+  }
+
+  .cases-list {
+    max-height: 520px;
+    overflow-y: auto;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+
+    ::ng-deep .ant-list-item {
+      padding: 10px 12px;
+    }
+  }
+
+  .case-item {
+    display: block;
+  }
+
+  .case-row {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .case-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .case-title {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.88);
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .case-desc {
+    margin-top: 2px;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .case-tags {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}

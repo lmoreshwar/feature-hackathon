@@ -37,6 +37,15 @@ export interface ITestCase extends IBaseCollection {
   preconditions?: string[];
   steps: string[];
   expectedResult: string;
+  testData?: string;
+  tags?: string[];
+  comments?: string;
+  /**
+   * True when the test case is a candidate for automation (deterministic
+   * steps, programmatically verifiable expected result, etc.). When true
+   * the literal "Automation" tag is also present in `tags`.
+   */
+  automationFeasible?: boolean;
   priority: TestCasePriority;
   type: TestCaseType;
   status: TestCaseStatus;
@@ -52,6 +61,10 @@ export interface CreateTestCasePayload {
   preconditions?: string[];
   steps: string[];
   expectedResult: string;
+  testData?: string;
+  tags?: string[];
+  comments?: string;
+  automationFeasible?: boolean;
   priority?: TestCasePriority;
   type?: TestCaseType;
   status?: TestCaseStatus;
@@ -64,6 +77,10 @@ export interface UpdateTestCasePayload {
   preconditions?: string[];
   steps?: string[];
   expectedResult?: string;
+  testData?: string;
+  tags?: string[];
+  comments?: string;
+  automationFeasible?: boolean;
   priority?: TestCasePriority;
   type?: TestCaseType;
   status?: TestCaseStatus;

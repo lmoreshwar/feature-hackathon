@@ -27,6 +27,7 @@ export class SidebarComponent {
     { label: 'Test Suites', icon: 'folder', route: '/test-suites' },
     { label: 'Requirements', icon: 'file-text', route: '/requirements' },
     { label: 'Test Cases', icon: 'check-square', route: '/test-cases' },
+    { label: 'Coverage Review', icon: 'audit', route: '/coverage-review' },
     { label: 'Page Crawl', icon: 'global', route: '/page-elements' },
     { label: 'Mappings', icon: 'partition', route: '/mappings' },
     { label: 'Executions', icon: 'thunderbolt', route: '/executions' },

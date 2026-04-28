@@ -24,6 +24,11 @@ export const TestCaseSchema = new Schema(
     steps: { type: [String], default: [] },
     expectedResult: { type: String, required: true },
 
+    testData: { type: String, default: null },
+    tags: { type: [String], default: [], index: true },
+    comments: { type: String, default: null },
+    automationFeasible: { type: Boolean, default: false, index: true },
+
     priority: {
       type: String,
       enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],

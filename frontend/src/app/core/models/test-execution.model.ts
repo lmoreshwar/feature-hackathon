@@ -38,6 +38,13 @@ export interface ITestExecution extends IBaseCollection {
   triggeredBy: string;
 }
 
+export interface BrowserStackCapsPayload {
+  os?: string;
+  osVersion?: string;
+  browser?: string;
+  browserVersion?: string;
+}
+
 export interface CreateExecutionPayload {
   featureId: string;
   testSuiteId?: string;
@@ -45,6 +52,8 @@ export interface CreateExecutionPayload {
   buildName: string;
   provider?: ExecutionProvider;
   status?: ExecutionStatus;
+  baseUrl?: string;
+  browserStack?: BrowserStackCapsPayload;
 }
 
 export interface UpdateExecutionPayload {

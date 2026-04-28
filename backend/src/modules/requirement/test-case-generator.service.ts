@@ -32,6 +32,10 @@ interface GeneratedTestCase {
   preconditions?: string[];
   steps: string[];
   expectedResult: string;
+  testData?: string;
+  tags?: string[];
+  comments?: string;
+  automationFeasible?: boolean;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   type?: 'FUNCTIONAL' | 'REGRESSION' | 'SMOKE' | 'E2E';
 }
@@ -39,15 +43,105 @@ interface GeneratedTestCase {
 const LLM_TIMEOUT_MS = 45_000;
 const MAX_TEST_CASES = 12;
 
-const SYSTEM_PROMPT = `You are a senior QA engineer. Given a software requirement, write a concise but realistic set of test cases that thoroughly validate it.
+// RICE-POT + Anti-Hallucination prompt (sourced from AI_Agents project,
+// adapted to emit JSON matching this project's TestCase schema instead of
+// a markdown table).
+const SYSTEM_PROMPT = `You are a Senior QA Tester / SDET with 15+ years of experience.
 
-Rules:
-- Output JSON only. No prose, no markdown, no comments.
-- Top-level shape: { "testCases": [ ... ] }
-- Each test case: { "title": string, "description": string, "preconditions": string[], "steps": string[], "expectedResult": string, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "type": "FUNCTIONAL"|"REGRESSION"|"SMOKE"|"E2E" }
-- Cover happy path, validation/negative cases, and at least one edge case.
-- Keep titles short (<= 80 chars). 2-7 steps per case. Be specific and actionable.
-- Generate between 3 and 8 test cases.`;
+## ANTI-HALLUCINATION RULES (MANDATORY)
+1. DO NOT invent features, APIs, error codes, UI elements, or behavior.
+2. DO NOT assume default or "typical" system behavior.
+3. If information is missing or unclear, mark it as "[NOT SPECIFIED]".
+4. Every assertion must be traceable to provided input.
+5. If a detail is inferred, label it explicitly as "Inference (low confidence)".
+
+## PROCESS (RICE-POT internally)
+Step 1: Extract verifiable facts from the input.
+Step 2: List unknown or missing information mentally.
+Step 3: Generate output ONLY from Step 1 facts.
+Step 4: Apply Boundary Value Analysis, Equivalence Partitioning, Negative Testing.
+Step 5: Self-check for hallucinations or contradictions.
+
+## SCOPE BOUNDARY RULE (HIGHEST PRIORITY \u2014 OVERRIDES COVERAGE RULES)
+- ONLY generate test cases for features/sections that have EXPLICIT acceptance criteria, documented behavior, or detailed descriptions in the input.
+- If a feature is mentioned by name but has NO acceptance criteria \u2014 DO NOT generate test cases for it.
+- Generating test cases for undocumented features = hallucination violation.
+
+## COVERAGE RULES (APPLIES ONLY TO IN-SCOPE FEATURES WITH DOCUMENTED CRITERIA)
+- For features that DO have acceptance criteria: generate THOROUGH test cases using professional test design techniques.
+- Every stated acceptance criterion MUST have MULTIPLE test cases derived from it:
+  \u2022 At least 1 Positive (happy path) test case
+  \u2022 At least 1 Negative (invalid/error) test case
+  \u2022 Boundary Value Analysis: test at boundaries (empty, min, max, just-above, just-below)
+  \u2022 Equivalence Partitioning: test representative values from each valid/invalid class
+  \u2022 Error Handling: test system response to unexpected inputs
+  \u2022 UI Validation: test presence and behavior of UI elements mentioned or implied
+  \u2022 Security: test for injection, session hijacking, unauthorized access where applicable
+- Deriving Negative, Boundary, Security, and UI tests from documented criteria is NOT hallucination \u2014 it is standard QA methodology.
+- Do NOT pad with redundant or truly duplicate test cases.
+- A single acceptance criterion like "User can login" should yield 4-6 test cases minimum (valid login, invalid password, invalid email, empty fields, boundary inputs, UI check).
+
+## TEST DATA INTELLIGENCE (MANDATORY \u2014 same logic as AI_Agents Test Data column)
+Every test case MUST have a "testData" string filled with concrete data the tester will actually use:
+- POSITIVE  \u2192 realistic VALID values (e.g. "username=standard_user, password=secret_sauce")
+- NEGATIVE  \u2192 INVALID / wrong-format / wrong-type values (e.g. "email=plaintext_no_at_sign, password=short")
+- BOUNDARY  \u2192 EDGE values: empty, min, max, just-above, just-below (e.g. "name=\\"\\" (empty), name='A' (1 char), name='A'\u00d7256 (max+1)")
+- SECURITY  \u2192 INJECTION / XSS / auth-bypass payloads (e.g. "username=admin' OR 1=1 --", "comment=<script>alert(1)</script>")
+- VALIDATION \u2192 inputs that exercise validators (e.g. "phone=12345 (too short, expected 10 digits)")
+- UI         \u2192 N/A or describe element state ("hover state on submit button", or "[NOT SPECIFIED]")
+Use placeholder syntax \${variable} for values that vary at runtime. If the requirement gives no concrete data, write "[NOT SPECIFIED]" \u2014 NEVER invent values that are not derivable from the input.
+
+## TAGS (free-form feature labels, max 5)
+Examples: ["Login","Authentication"], ["Cart","Checkout"], ["API","Validation"], ["Security","XSS"]. Use names that appear in the requirement text.
+
+## COMMENTS (optional notes the tester should know)
+Short notes such as "Verify on Chrome and Firefox", "Re-run after fix XYZ", "[NOT SPECIFIED]".
+
+## AUTOMATION FEASIBILITY (MANDATORY \u2014 same logic as AI_Agents Execution Tag = "Automation")
+Set "automationFeasible": true ONLY when ALL of the following are true:
+- Steps are deterministic and repeatable (no manual judgement, no \"looks ok\", no exploratory testing).
+- Expected result is programmatically verifiable (a value, message, status code, DOM element, count, redirect, error code, etc.).
+- Test data is concrete OR can be parameterised with \${variables}.
+- No reliance on subjective UX, look-and-feel, accessibility opinions, or human-in-the-loop checks.
+- No reliance on out-of-system actions (real OTP from a phone, real payment gateway, etc.) UNLESS clearly mockable.
+- Category is one of POSITIVE / NEGATIVE / BOUNDARY / SECURITY / VALIDATION / FUNCTIONAL / E2E. UI cosmetic checks are usually NOT feasible \u2014 set false.
+Otherwise set "automationFeasible": false.
+Also: when automationFeasible is true, ADD the literal tag "Automation" to the tags array (in addition to feature tags). When false, do NOT add "Automation".
+Aim for AT LEAST 70% of generated test cases to be automation-feasible \u2014 most functional, negative, boundary, security and validation tests qualify.
+
+## OUTPUT FORMAT (STRICT JSON \u2014 no markdown, no code fences, no prose)
+Return ONLY a single JSON object of this EXACT shape:
+{
+  "testCases": [
+    {
+      "title": string,                    // <= 80 chars, action-oriented (e.g. "Login with valid credentials")
+      "description": string,              // 1-2 sentences. PREFIX with category tag in square brackets, e.g. "[POSITIVE] ...", "[NEGATIVE] ...", "[BOUNDARY] ...", "[SECURITY] ...", "[UI] ...", "[VALIDATION] ..."
+      "preconditions": string[],          // 0-5 short preconditions
+      "steps": string[],                  // 2-7 specific, actionable steps
+      "expectedResult": string,           // single clear sentence
+      "testData": string,                 // concrete data per intelligence rules above (or "[NOT SPECIFIED]")
+      "tags": string[],                   // 1-5 free-form feature/area labels (+ "Automation" iff automationFeasible=true)
+      "comments": string,                 // optional notes for the tester (or "[NOT SPECIFIED]")
+      "automationFeasible": boolean,      // true iff this test case can be safely automated per the AUTOMATION FEASIBILITY rules above
+      "priority": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+      "type": "FUNCTIONAL" | "REGRESSION" | "SMOKE" | "E2E"
+    }
+  ]
+}
+
+## TYPE MAPPING (use these rules to choose the "type" field)
+- "SMOKE"      \u2192 core happy-path automation candidates (Sanity)
+- "REGRESSION" \u2192 negative, boundary, security, UI checks that belong in the regression suite
+- "FUNCTIONAL" \u2192 standard functional checks of documented behavior
+- "E2E"        \u2192 multi-step end-to-end user flows that span several features
+
+## CATEGORY TAG (encode AI_Agents "Test Case Type" inside the description prefix)
+Use one of: [POSITIVE], [NEGATIVE], [BOUNDARY], [SECURITY], [UI], [VALIDATION], [FUNCTIONAL]
+
+## FINAL RULES
+- Generate between 4 and 10 test cases. No padding, no inflation, no duplicates.
+- If a step or expected result depends on info NOT in the input, write "[NOT SPECIFIED]" rather than inventing details.
+- Output JSON only. No commentary, no markdown, no explanation.`;
 
 @Injectable()
 export class TestCaseGeneratorService {
@@ -262,8 +356,9 @@ export class TestCaseGeneratorService {
     context: string,
   ): Promise<GeneratedTestCase[]> {
     const userPrompt =
-      `Generate test cases for the following requirement. ` +
-      `Reply with a single JSON object of shape {"testCases":[ ... ]}. No prose.\n\n${context}`;
+      `Analyze the following requirement and generate test cases strictly per your system instructions (RICE-POT + Anti-Hallucination).\n\n` +
+      `REQUIREMENT / INPUT:\n${context}\n\n` +
+      `Reply with a single JSON object of shape {"testCases":[ ... ]}. No prose, no markdown, no code fences.`;
 
     this.logger.log(
       `Calling ${cfg.provider} (${cfg.model}) to generate test cases...`,
@@ -463,12 +558,34 @@ export class TestCaseGeneratorService {
         ? [this.asString(raw['preconditions']) as string]
         : []);
 
+    const tags = this.asStringArray(raw['tags']).slice(0, 8);
+    let automationFeasible = this.asBoolean(
+      raw['automationFeasible'] ?? raw['automation_feasible'] ?? raw['automation'],
+    );
+    if (automationFeasible === undefined) {
+      automationFeasible = this.inferAutomationFeasible({
+        description: this.asString(raw['description']),
+        type: this.asEnum(raw['type'], [
+          'FUNCTIONAL',
+          'REGRESSION',
+          'SMOKE',
+          'E2E',
+        ]),
+        tags,
+      });
+    }
+
     return {
       title: title.slice(0, 200),
       description: this.asString(raw['description']),
       preconditions,
       steps,
       expectedResult,
+      testData:
+        this.asString(raw['testData']) ?? this.asString(raw['test_data']),
+      tags,
+      comments: this.asString(raw['comments']),
+      automationFeasible,
       priority: this.asEnum(raw['priority'], [
         'LOW',
         'MEDIUM',
@@ -482,6 +599,43 @@ export class TestCaseGeneratorService {
         'E2E',
       ]),
     };
+  }
+
+  /**
+   * Heuristic safety net used when the LLM forgets the automationFeasible
+   * flag. Same intent as the AI_Agents Execution-Tag rule:
+   * - UI cosmetic checks are usually NOT automation candidates.
+   * - Functional / negative / boundary / security / validation / smoke
+   *   tests usually ARE.
+   */
+  private inferAutomationFeasible(input: {
+    description?: string;
+    type?: 'FUNCTIONAL' | 'REGRESSION' | 'SMOKE' | 'E2E';
+    tags: string[];
+  }): boolean {
+    const text = `${input.description ?? ''} ${input.tags.join(' ')}`.toLowerCase();
+    const uiOnly = /\[ui\]|look[- ]and[- ]feel|cosmetic|visual review|exploratory|usability/.test(
+      text,
+    );
+    if (uiOnly) return false;
+    const candidate = /\[(positive|negative|boundary|security|validation|functional)\]/.test(
+      text,
+    );
+    if (candidate) return true;
+    if (input.type === 'SMOKE' || input.type === 'FUNCTIONAL' || input.type === 'REGRESSION') {
+      return true;
+    }
+    return false;
+  }
+
+  private asBoolean(v: unknown): boolean | undefined {
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      if (['true', 'yes', 'y', '1', 'automation'].includes(s)) return true;
+      if (['false', 'no', 'n', '0'].includes(s)) return false;
+    }
+    return undefined;
   }
 
   private asString(v: unknown): string | undefined {
@@ -512,7 +666,7 @@ export class TestCaseGeneratorService {
       {
         title: `Happy path: ${seed}`,
         description:
-          'Verifies the requirement works correctly under normal conditions.',
+          '[POSITIVE] Verifies the requirement works correctly under normal conditions.',
         preconditions: ['User is authenticated', 'System is in a known good state'],
         steps: [
           'Navigate to the relevant page',
@@ -521,13 +675,17 @@ export class TestCaseGeneratorService {
         ],
         expectedResult:
           'The system behaves exactly as described in the requirement, with no errors.',
+        testData: '[NOT SPECIFIED]',
+        tags: ['Smoke', 'Automation'],
+        comments: 'Template test case - configure OpenAI in Settings for AI-generated cases.',
+        automationFeasible: true,
         priority: 'HIGH',
-        type: 'FUNCTIONAL',
+        type: 'SMOKE',
       },
       {
         title: `Validation: ${seed}`,
         description:
-          'Verifies the requirement rejects invalid input with a helpful message.',
+          '[NEGATIVE] Verifies the requirement rejects invalid input with a helpful message.',
         preconditions: ['User is authenticated'],
         steps: [
           'Open the relevant form or screen',
@@ -535,13 +693,17 @@ export class TestCaseGeneratorService {
         ],
         expectedResult:
           'The system blocks the action and shows a clear validation message; no data is persisted.',
+        testData: 'empty string, oversized string, malformed format',
+        tags: ['Validation', 'Automation'],
+        comments: '[NOT SPECIFIED]',
+        automationFeasible: true,
         priority: 'MEDIUM',
         type: 'FUNCTIONAL',
       },
       {
         title: `Edge case: ${seed}`,
         description:
-          'Verifies the requirement still holds at a boundary or unusual condition.',
+          '[BOUNDARY] Verifies the requirement still holds at a boundary or unusual condition.',
         preconditions: ['User is authenticated'],
         steps: [
           'Reproduce the boundary condition (max length, zero, concurrent action, etc.)',
@@ -549,6 +711,10 @@ export class TestCaseGeneratorService {
         ],
         expectedResult:
           'The system handles the edge case gracefully without crashing or data loss.',
+        testData: 'min, max, max+1, 0, concurrent requests',
+        tags: ['Boundary', 'Automation'],
+        comments: '[NOT SPECIFIED]',
+        automationFeasible: true,
         priority: 'MEDIUM',
         type: 'REGRESSION',
       },
@@ -570,6 +736,10 @@ export class TestCaseGeneratorService {
       preconditions: tc.preconditions ?? [],
       steps: tc.steps,
       expectedResult: tc.expectedResult,
+      testData: tc.testData,
+      tags: tc.tags ?? [],
+      comments: tc.comments,
+      automationFeasible: tc.automationFeasible ?? false,
       priority: tc.priority ?? 'MEDIUM',
       type: tc.type ?? 'FUNCTIONAL',
       status: 'GENERATED',

@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsObject,
   IsOptional,
@@ -46,6 +47,27 @@ export class UpdateTestCaseDto {
   @IsOptional()
   @IsString()
   expectedResult?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  testData?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  comments?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  automationFeasible?: boolean;
 
   @ApiPropertyOptional({ enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] })
   @IsOptional()
