@@ -11,6 +11,7 @@ export interface CreateUserData {
 export interface UpdateUserData {
   email?: string;
   passwordHash?: string;
+  refreshTokenHash?: string | null;
 }
 
 export interface ListUsersResult {
@@ -39,7 +40,10 @@ export class UserRepository {
   }
 
   async findByIdWithPassword(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).select('+passwordHash').exec();
+    return this.userModel
+      .findById(id)
+      .select('+passwordHash +refreshTokenHash')
+      .exec();
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {
@@ -49,7 +53,7 @@ export class UserRepository {
   async findByEmailWithPassword(email: string): Promise<UserDocument | null> {
     return this.userModel
       .findOne({ email: email.toLowerCase().trim() })
-      .select('+passwordHash')
+      .select('+passwordHash +refreshTokenHash')
       .exec();
   }
 

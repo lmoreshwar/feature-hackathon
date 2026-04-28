@@ -21,7 +21,9 @@ async function bootstrap() {
     .setTitle('Hackathon API')
     .setDescription('API documentation for the Hackathon backend')
     .setVersion('1.0.0')
+    .addBearerAuth()
     .addTag('app')
+    .addTag('auth')
     .addTag('users')
     .build();
 

@@ -16,6 +16,11 @@ export const UserSchema = new Schema(
       required: true,
       select: false,
     },
+    refreshTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
     createdAt: {
       type: Number,
       default: () => Date.now(),
