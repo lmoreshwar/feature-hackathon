@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -27,7 +27,10 @@ import {
   ScriptType,
 } from '../../core/models';
 import { FeaturesService } from '../../core/services/features.service';
-import { MappingsService } from '../../core/services/mappings.service';
+import {
+  MappingStepSuggestion,
+  MappingsService,
+} from '../../core/services/mappings.service';
 import { PageElementsService } from '../../core/services/page-elements.service';
 import { TestCasesService } from '../../core/services/test-cases.service';
 import { TestSuitesService } from '../../core/services/test-suites.service';
@@ -48,6 +51,7 @@ interface PickerForm {
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     NzCardModule,
     NzFormModule,
     NzInputModule,
@@ -87,6 +91,8 @@ export class MappingsComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly generating = signal(false);
   protected readonly pushing = signal(false);
+  protected readonly suggesting = signal(false);
+  protected readonly stepSuggestions = signal<MappingStepSuggestion[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly form = this.fb.nonNullable.group<PickerForm>({
@@ -137,6 +143,7 @@ export class MappingsComponent implements OnInit {
     this.form.controls.testCaseId.valueChanges.pipe(distinctUntilChanged()).subscribe((id) => {
       if (!id) {
         this.mapping.set(null);
+        this.stepSuggestions.set([]);
         this.form.patchValue({ elementIds: [] });
         return;
       }
@@ -151,9 +158,68 @@ export class MappingsComponent implements OnInit {
               elementIds: m?.elementIds ?? [],
               scriptType: m?.scriptType ?? 'PLAYWRIGHT',
             });
+            this.stepSuggestions.set([]);
           },
         });
     });
+  }
+
+  protected suggest(): void {
+    if (this.suggesting()) return;
+    const testCaseId = this.form.controls.testCaseId.value;
+    if (!testCaseId) {
+      this.message.warning('Pick a test case first.');
+      return;
+    }
+    this.errorMessage.set(null);
+    this.suggesting.set(true);
+    this.mappingsService
+      .suggest(testCaseId)
+      .pipe(finalize(() => this.suggesting.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (!res) return;
+          this.stepSuggestions.set(res.steps);
+          this.form.controls.elementIds.setValue(res.elementIds);
+          const matched = res.steps.filter((s) => s.elementId).length;
+          this.message.success(
+            `AI suggested mappings for ${matched}/${res.steps.length} steps. Review and edit before saving.`,
+          );
+        },
+        error: (e: unknown) => this.errorMessage.set(toErrorMessage(e)),
+      });
+  }
+
+  protected setStepElement(stepIndex: number, elementId: string | null): void {
+    const updated = this.stepSuggestions().map((s) =>
+      s.stepIndex === stepIndex
+        ? {
+            ...s,
+            elementId,
+            elementName: elementId
+              ? this.pageElements().find((e) => e._id === elementId)?.elementName
+              : undefined,
+            selector: elementId
+              ? this.pageElements().find((e) => e._id === elementId)?.selector
+              : undefined,
+            confidence: undefined,
+            reason: 'manual',
+          }
+        : s,
+    );
+    this.stepSuggestions.set(updated);
+    const ids = Array.from(
+      new Set(
+        updated
+          .map((s) => s.elementId)
+          .filter((v): v is string => Boolean(v)),
+      ),
+    );
+    this.form.controls.elementIds.setValue(ids);
+  }
+
+  protected clearSuggestions(): void {
+    this.stepSuggestions.set([]);
   }
 
   protected save(): void {

@@ -5,6 +5,7 @@ import {
   TestCaseMappingSchema,
 } from '../../common/schemas';
 import { AuthModule } from '../auth/auth.module';
+import { LlmModule } from '../llm/llm.module';
 import { PageElementModule } from '../page-element/page-element.module';
 import { TestCaseModule } from '../test-case/test-case.module';
 import { MappingController } from './testcase-mapping.controller';
@@ -19,6 +20,7 @@ import { MappingService } from './testcase-mapping.service';
     AuthModule,
     TestCaseModule,
     PageElementModule,
+    LlmModule,
   ],
   controllers: [MappingController],
   providers: [MappingService, MappingRepository],

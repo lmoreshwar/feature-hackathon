@@ -49,34 +49,95 @@
       </form>
     </nz-card>
 
-    <nz-card class="elements-card" nzTitle="Page elements" [nzBordered]="false">
+    <nz-card class="elements-card" nzTitle="Step → Element mapping" [nzBordered]="false">
+      <div class="suggest-row">
+        <button
+          nz-button
+          nzType="primary"
+          (click)="suggest()"
+          [nzLoading]="suggesting()"
+          [disabled]="!form.controls.testCaseId.value"
+        >
+          <span nz-icon nzType="bulb"></span> Suggest with AI
+        </button>
+        @if (stepSuggestions().length > 0) {
+          <button nz-button nzType="default" (click)="clearSuggestions()">
+            <span nz-icon nzType="close"></span> Clear suggestions
+          </button>
+        }
+      </div>
+
       <nz-spin [nzSpinning]="loading()">
         @if (pageElements().length === 0) {
           <nz-empty nzNotFoundContent="No page elements for this feature"></nz-empty>
-        } @else {
-          <label nz-checkbox
-            [nzChecked]="allChecked"
-            [nzIndeterminate]="someChecked"
-            (nzCheckedChange)="toggleAllElements($event)"
-            class="select-all"
-          >Select all</label>
-
-          <div class="element-list">
-            @for (el of pageElements(); track el._id) {
-              <label nz-checkbox
-                [nzChecked]="isSelected(el._id)"
-                (nzCheckedChange)="toggleElement(el._id, $event)"
-                class="element-row"
-              >
-                <div>
-                  <strong>{{ el.elementName }}</strong>
-                  <nz-tag class="type-tag">{{ el.elementType }}</nz-tag>
-                  <div class="meta">{{ el.selectorType }}: <code>{{ el.selector }}</code></div>
+        } @else if (stepSuggestions().length > 0) {
+          <p class="suggest-hint">
+            Review the AI's per-step suggestions. Change the dropdown for any step to override; the union of selected elements is what gets saved as the mapping.
+          </p>
+          <div class="step-list">
+            @for (s of stepSuggestions(); track s.stepIndex) {
+              <div class="step-row">
+                <div class="step-num">{{ s.stepIndex + 1 }}</div>
+                <div class="step-body">
+                  <div class="step-text">{{ s.step }}</div>
+                  <div class="step-controls">
+                    <nz-select
+                      class="step-select"
+                      nzAllowClear
+                      nzShowSearch
+                      nzPlaceHolder="No element"
+                      [ngModel]="s.elementId"
+                      (ngModelChange)="setStepElement(s.stepIndex, $event)"
+                    >
+                      @for (el of pageElements(); track el._id) {
+                        <nz-option
+                          [nzValue]="el._id"
+                          [nzLabel]="el.elementName + ' (' + el.elementType + ')'"
+                        ></nz-option>
+                      }
+                    </nz-select>
+                    @if (s.confidence !== undefined && s.elementId && s.reason !== 'manual') {
+                      <nz-tag
+                        [nzColor]="s.confidence >= 0.7 ? 'green' : s.confidence >= 0.4 ? 'gold' : 'red'"
+                        nz-tooltip
+                        [nzTooltipTitle]="s.reason"
+                      >AI {{ (s.confidence * 100).toFixed(0) }}%</nz-tag>
+                    } @else if (s.reason === 'manual') {
+                      <nz-tag nzColor="blue">manual</nz-tag>
+                    }
+                  </div>
                 </div>
-              </label>
+              </div>
             }
           </div>
+          <p class="muted-note">
+            <span nz-icon nzType="info-circle"></span>
+            Want to add elements outside the suggested set? Use the legacy element list below.
+          </p>
         }
+
+        <label nz-checkbox
+          [nzChecked]="allChecked"
+          [nzIndeterminate]="someChecked"
+          (nzCheckedChange)="toggleAllElements($event)"
+          class="select-all"
+        >Select all elements</label>
+
+        <div class="element-list">
+          @for (el of pageElements(); track el._id) {
+            <label nz-checkbox
+              [nzChecked]="isSelected(el._id)"
+              (nzCheckedChange)="toggleElement(el._id, $event)"
+              class="element-row"
+            >
+              <div>
+                <strong>{{ el.elementName }}</strong>
+                <nz-tag class="type-tag">{{ el.elementType }}</nz-tag>
+                <div class="meta">{{ el.selectorType }}: <code>{{ el.selector }}</code></div>
+              </div>
+            </label>
+          }
+        </div>
       </nz-spin>
 
       <div class="actions">

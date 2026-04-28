@@ -15,7 +15,12 @@
         <nz-form-item>
           <nz-form-label nzRequired>Feature</nz-form-label>
           <nz-form-control nzErrorTip="Feature is required">
-            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+            <nz-select
+              formControlName="featureId"
+              nzPlaceHolder="Select a feature"
+              nzShowSearch
+              (nzOpenChange)="onFeatureDropdownOpenChange($event)"
+            >
               @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
             </nz-select>
           </nz-form-control>
@@ -33,21 +38,150 @@
           </nz-form-control>
         </nz-form-item>
 
+        <nz-divider nzPlain nzText="Authentication" class="auth-divider"></nz-divider>
+
+        <nz-form-item>
+          <nz-form-label>Auth method</nz-form-label>
+          <nz-form-control>
+            <nz-radio-group formControlName="authMethod">
+              <label nz-radio nzValue="none">None</label>
+              <label nz-radio nzValue="token">Auth token</label>
+              <label nz-radio nzValue="credentials">Username & password</label>
+            </nz-radio-group>
+          </nz-form-control>
+        </nz-form-item>
+
+        @if (crawlForm.controls.authMethod.value !== 'none') {
+          <nz-form-item>
+            <nz-form-label nzRequired>Login URL</nz-form-label>
+            <nz-form-control nzErrorTip="Login URL is required when authentication is enabled">
+              <input nz-input formControlName="loginUrl" placeholder="https://app.example.com/login" />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        @if (crawlForm.controls.authMethod.value === 'token') {
+          <nz-form-item>
+            <nz-form-label nzRequired>Auth token</nz-form-label>
+            <nz-form-control nzErrorTip="Auth token is required">
+              <input
+                nz-input
+                type="password"
+                formControlName="authToken"
+                placeholder="Bearer eyJhbGciOi..."
+                autocomplete="off"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        @if (crawlForm.controls.authMethod.value === 'credentials') {
+          <nz-form-item>
+            <nz-form-label nzRequired>Username</nz-form-label>
+            <nz-form-control nzErrorTip="Username is required">
+              <input
+                nz-input
+                formControlName="username"
+                placeholder="user@example.com"
+                autocomplete="username"
+              />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Password</nz-form-label>
+            <nz-form-control nzErrorTip="Password is required">
+              <input
+                nz-input
+                type="password"
+                formControlName="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        <nz-form-item class="ai-row">
+          <nz-form-control>
+            <div class="ai-toggle">
+              <nz-switch formControlName="aiNaming"></nz-switch>
+              <div class="ai-text">
+                <strong>AI element naming</strong>
+                <small>Uses your configured LLM to assign semantic camelCase names (e.g. <code>emailInput</code>, <code>loginButton</code>). Falls back to a heuristic when no integration is set.</small>
+              </div>
+            </div>
+          </nz-form-control>
+        </nz-form-item>
+
         <button
           nz-button
           nzType="primary"
           nzBlock
           type="submit"
           [nzLoading]="crawling()"
-          [disabled]="crawlForm.invalid"
+          [disabled]="crawlForm.invalid || captureSessionId() !== null"
         >
           <span nz-icon nzType="global"></span> Crawl page
         </button>
+
+        <button
+          nz-button
+          type="button"
+          nzBlock
+          class="capture-btn"
+          [nzLoading]="captureStarting()"
+          [disabled]="crawlForm.invalid || captureSessionId() !== null"
+          (click)="startCapture()"
+        >
+          <span nz-icon nzType="select"></span> Capture clicks manually
+        </button>
       </form>
       <p class="tip">
-        The crawler returns a representative element set, persists them via the
-        bulk endpoint, and you can refine each entry afterwards.
+        @if (crawlForm.controls.authMethod.value === 'none') {
+          The crawler returns a representative element set, persists them via the
+          bulk endpoint, and you can refine each entry afterwards.
+        } @else {
+          The crawler will sign in at the login URL using the configured
+          {{ crawlForm.controls.authMethod.value === 'token' ? 'auth token' : 'credentials' }},
+          then navigate to the page URL and capture its elements.
+        }
       </p>
+
+      @if (captureSessionId(); as sid) {
+        <nz-divider class="auth-divider" nzText="Capture session" nzOrientation="left"></nz-divider>
+        <div class="capture-banner">
+          <span nz-icon nzType="experiment"></span>
+          A non-headless browser is open. Click any element to capture it. Live count: <strong>{{ captureItems().length }}</strong>
+        </div>
+        <div class="capture-list">
+          @for (item of captureItems(); track item.clientId) {
+            <div class="capture-row">
+              <strong>{{ item.elementName }}</strong>
+              <nz-tag class="type-tag">{{ item.elementType }}</nz-tag>
+              <div class="meta">
+                <code>{{ item.selector }}</code>
+                <span class="capture-page">{{ item.pageTitle || item.pageUrl }}</span>
+              </div>
+            </div>
+          } @empty {
+            <p class="muted-note">Waiting for clicks…</p>
+          }
+        </div>
+        <div class="capture-actions">
+          <button
+            nz-button
+            nzType="primary"
+            (click)="saveCapture()"
+            [nzLoading]="captureSaving()"
+            [disabled]="captureItems().length === 0"
+          >
+            <span nz-icon nzType="save"></span> Save {{ captureItems().length }} element(s)
+          </button>
+          <button nz-button (click)="cancelCapture()">
+            <span nz-icon nzType="close"></span> Cancel
+          </button>
+        </div>
+      }
     </nz-card>
   </div>
 
@@ -124,5 +258,64 @@
     </nz-card>
   </div>
 </div>
+
+<nz-card nzTitle="Page Object Model" [nzBordered]="false" class="pom-card">
+  <div class="pom-toolbar">
+    <nz-select
+      class="pom-feature"
+      nzPlaceHolder="Select a feature to view its Page Objects"
+      nzShowSearch
+      nzAllowClear
+      [formControl]="pomFeatureControl"
+    >
+      @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+    </nz-select>
+    <nz-radio-group [formControl]="pomFrameworkControl" class="pom-framework">
+      @for (fw of pomFrameworks; track fw) {
+        <label nz-radio-button [nzValue]="fw">{{ fw }}</label>
+      }
+    </nz-radio-group>
+    <button nz-button nzType="default" (click)="refreshPom()" [nzLoading]="pomLoading()">
+      <span nz-icon nzType="reload"></span> Refresh
+    </button>
+  </div>
+
+  @if (!pomFeatureControl.value) {
+    <nz-empty
+      nzNotFoundContent="Pick a feature above to generate a Page Object Model for each page on it."
+    ></nz-empty>
+  } @else if (pomLoading() && pomFiles().length === 0) {
+    <nz-empty nzNotFoundContent="Generating POM..."></nz-empty>
+  } @else if (pomFiles().length === 0) {
+    <nz-empty
+      nzNotFoundContent="No page elements found for this feature yet. Crawl a page first."
+    ></nz-empty>
+  } @else {
+    <nz-tabs nzType="card">
+      @for (file of pomFiles(); track file.fileName) {
+        <nz-tab [nzTitle]="tabTitle">
+          <ng-template #tabTitle>
+            <span>{{ file.className }}</span>
+            <nz-tag class="pom-count" nzColor="blue">{{ file.elementCount }}</nz-tag>
+          </ng-template>
+          <div class="pom-file-meta">
+            <code>{{ file.fileName }}</code>
+            <span class="pom-url">{{ file.pageUrl }}</span>
+            <button
+              nz-button
+              nzType="text"
+              nz-tooltip
+              nzTooltipTitle="Copy to clipboard"
+              (click)="copyPom(file)"
+            >
+              <span nz-icon nzType="copy"></span>
+            </button>
+          </div>
+          <pre class="pom-code"><code>{{ file.content }}</code></pre>
+        </nz-tab>
+      }
+    </nz-tabs>
+  }
+</nz-card>
 
 <app-page-element-form-drawer [features]="features()" (saved)="onSaved()"></app-page-element-form-drawer>

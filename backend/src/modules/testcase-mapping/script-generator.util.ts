@@ -1,24 +1,47 @@
 import { TestCaseDocument } from '../../common/schemas/test-case.schema';
 import { PageElementDocument } from '../../common/schemas/page-element.schema';
+import {
+  PageGroup,
+  groupElementsByPage,
+  safeIdent,
+} from '../page-element/pom-generator.util';
+import { PageElementRecord } from '../page-element/page-element.interface';
 import { ScriptType } from './testcase-mapping.interface';
 
 const sanitizeTitle = (title: string): string =>
   title.replace(/[`'"]/g, '').slice(0, 120);
 
-const elementSelector = (el: PageElementDocument): string => {
-  const obj = el.toObject() as { selector: string; selectorType: string };
-  switch (obj.selectorType) {
-    case 'XPATH':
-      return `xpath=${obj.selector}`;
-    case 'TEXT':
-      return `text=${obj.selector}`;
-    case 'ID':
-      return obj.selector.startsWith('#') ? obj.selector : `#${obj.selector}`;
-    default:
-      return obj.selector;
-  }
+interface ElementUsage {
+  page: PageGroup;
+  element: PageElementRecord;
+}
+
+const elementToRecord = (doc: PageElementDocument): PageElementRecord => {
+  const obj = doc.toObject() as Record<string, unknown>;
+  return {
+    _id: doc._id.toString(),
+    featureId: obj.featureId as string,
+    testSuiteId: (obj.testSuiteId as string) ?? undefined,
+    pageUrl: obj.pageUrl as string,
+    pageName: (obj.pageName as string) ?? undefined,
+    elementName: obj.elementName as string,
+    elementType: obj.elementType as PageElementRecord['elementType'],
+    selector: obj.selector as string,
+    selectorType: obj.selectorType as PageElementRecord['selectorType'],
+    isStable: (obj.isStable as boolean) ?? true,
+    createdBy: obj.createdBy as string,
+    createdAt: obj.createdAt as number,
+    updatedAt: obj.updatedAt as number,
+  };
 };
 
+/**
+ * Build one POM-aware test script for the given test case + ordered list of
+ * elements. Each element resolves to its containing Page Object so the script
+ * uses references like `loginPage.emailInput.fill('VALUE')` rather than
+ * inline locators — matching the POM files generated under
+ * `GET /api/page-elements/by-feature/:id/pom`.
+ */
 export const generateScript = (
   scriptType: ScriptType,
   testCase: TestCaseDocument,
@@ -33,91 +56,181 @@ export const generateScript = (
   const steps = tcObj.steps ?? [];
   const expectedResult = tcObj.expectedResult ?? '';
 
-  if (scriptType === 'PLAYWRIGHT') {
-    const interactions = elements
-      .map((el, idx) => {
-        const obj = el.toObject() as { elementType: string; elementName: string };
-        const sel = elementSelector(el);
-        if (obj.elementType === 'INPUT') {
-          return `  await page.locator('${sel}').fill('VALUE_${idx + 1}'); // ${obj.elementName}`;
-        }
-        if (obj.elementType === 'BUTTON' || obj.elementType === 'LINK') {
-          return `  await page.locator('${sel}').click(); // ${obj.elementName}`;
-        }
-        if (obj.elementType === 'CHECKBOX') {
-          return `  await page.locator('${sel}').check(); // ${obj.elementName}`;
-        }
-        return `  await page.locator('${sel}').waitFor(); // ${obj.elementName}`;
-      })
-      .join('\n');
+  const records = elements.map(elementToRecord);
+  const groups = groupElementsByPage(records);
+  // Map each element's _id to its owning group (preserves caller-supplied order).
+  const groupByElementId = new Map<string, PageGroup>();
+  for (const g of groups) {
+    for (const el of g.elements) groupByElementId.set(el._id, g);
+  }
+  const usages: ElementUsage[] = records
+    .map((r) => {
+      const g = groupByElementId.get(r._id);
+      return g ? { page: g, element: r } : null;
+    })
+    .filter((u): u is ElementUsage => u !== null);
 
-    return `import { test, expect } from '@playwright/test';
+  if (scriptType === 'PLAYWRIGHT') {
+    return renderPlaywrightScript(title, steps, expectedResult, groups, usages);
+  }
+  if (scriptType === 'CYPRESS') {
+    return renderCypressScript(title, steps, expectedResult, groups, usages);
+  }
+  return renderSeleniumScript(title, steps, expectedResult, groups, usages);
+};
+
+const pageVarName = (g: PageGroup): string =>
+  safeIdent(g.className.replace(/Page$/, '') + 'Page');
+
+const renderPlaywrightScript = (
+  title: string,
+  steps: string[],
+  expectedResult: string,
+  groups: PageGroup[],
+  usages: ElementUsage[],
+): string => {
+  const imports = groups
+    .map((g) => `import { ${g.className} } from './pages/${g.className}';`)
+    .join('\n');
+  const instantiations = groups
+    .map((g) => `  const ${pageVarName(g)} = new ${g.className}(page);`)
+    .join('\n');
+  const openPrimary = groups[0] ? `  await ${pageVarName(groups[0])}.open();` : '';
+  const interactions = usages
+    .map((u, idx) => playwrightInteraction(u, idx))
+    .join('\n');
+
+  return `import { test, expect } from '@playwright/test';
+${imports}
 
 // Steps:
 ${steps.map((s, i) => `// ${i + 1}. ${s}`).join('\n')}
 // Expected: ${expectedResult}
 
 test('${title}', async ({ page }) => {
-  await page.goto(process.env.AUT_BASE_URL ?? 'https://www.saucedemo.com/');
+${instantiations}
+${openPrimary}
 ${interactions}
   // TODO: assert: ${expectedResult}
 });
 `;
-  }
+};
 
-  if (scriptType === 'CYPRESS') {
-    const interactions = elements
-      .map((el, idx) => {
-        const obj = el.toObject() as { elementType: string; elementName: string };
-        const sel = elementSelector(el);
-        if (obj.elementType === 'INPUT') {
-          return `  cy.get('${sel}').type('VALUE_${idx + 1}'); // ${obj.elementName}`;
-        }
-        return `  cy.get('${sel}').click(); // ${obj.elementName}`;
-      })
-      .join('\n');
+const playwrightInteraction = (u: ElementUsage, idx: number): string => {
+  const ref = `${pageVarName(u.page)}.${safeIdent(u.element.elementName)}`;
+  if (u.element.elementType === 'INPUT')
+    return `  await ${ref}.fill('VALUE_${idx + 1}'); // ${u.element.elementName}`;
+  if (u.element.elementType === 'BUTTON' || u.element.elementType === 'LINK')
+    return `  await ${ref}.click(); // ${u.element.elementName}`;
+  if (u.element.elementType === 'CHECKBOX')
+    return `  await ${ref}.check(); // ${u.element.elementName}`;
+  if (u.element.elementType === 'DROPDOWN')
+    return `  await ${ref}.selectOption({ index: 0 }); // ${u.element.elementName}`;
+  return `  await ${ref}.waitFor(); // ${u.element.elementName}`;
+};
 
-    return `// Steps:
-${steps.map((s, i) => `// ${i + 1}. ${s}`).join('\n')}
-// Expected: ${expectedResult}
-
-describe('${title}', () => {
-  it('runs ${title}', () => {
-    cy.visit(Cypress.env('AUT_BASE_URL') || 'https://www.saucedemo.com/');
-${interactions}
-    // TODO: assert: ${expectedResult}
-  });
-});
-`;
-  }
-
-  // SELENIUM (Node)
-  const interactions = elements
-    .map((el, idx) => {
-      const obj = el.toObject() as { elementType: string; elementName: string };
-      const sel = elementSelector(el);
-      const by =
-        obj.elementType === 'INPUT'
-          ? `await driver.findElement(By.css('${sel}')).sendKeys('VALUE_${idx + 1}'); // ${obj.elementName}`
-          : `await driver.findElement(By.css('${sel}')).click(); // ${obj.elementName}`;
-      return `  ${by}`;
-    })
+const renderCypressScript = (
+  title: string,
+  steps: string[],
+  expectedResult: string,
+  groups: PageGroup[],
+  usages: ElementUsage[],
+): string => {
+  const requires = groups
+    .map((g) => `const ${g.className} = require('./pages/${g.className}');`)
     .join('\n');
-  return `const { Builder, By } = require('selenium-webdriver');
+  const instantiations = groups
+    .map((g) => `  const ${pageVarName(g)} = new ${g.className}();`)
+    .join('\n');
+  const openPrimary = groups[0]
+    ? `  ${pageVarName(groups[0])}.open();`
+    : '';
+  const interactions = usages
+    .map((u, idx) => cypressInteraction(u, idx))
+    .join('\n');
+
+  return `${requires}
 
 // Steps:
 ${steps.map((s, i) => `// ${i + 1}. ${s}`).join('\n')}
 // Expected: ${expectedResult}
 
-(async function ${title.replace(/[^a-zA-Z0-9_]/g, '_')}() {
-  const driver = await new Builder().forBrowser('chrome').build();
-  try {
-    await driver.get(process.env.AUT_BASE_URL || 'https://www.saucedemo.com/');
+describe('${title}', () => {
+  it('runs ${title}', () => {
+${instantiations}
+${openPrimary}
 ${interactions}
     // TODO: assert: ${expectedResult}
-  } finally {
-    await driver.quit();
-  }
-})();
+  });
+});
 `;
 };
+
+const cypressInteraction = (u: ElementUsage, idx: number): string => {
+  const ref = `${pageVarName(u.page)}.${safeIdent(u.element.elementName)}()`;
+  if (u.element.elementType === 'INPUT')
+    return `    ${ref}.type('VALUE_${idx + 1}'); // ${u.element.elementName}`;
+  if (u.element.elementType === 'CHECKBOX')
+    return `    ${ref}.check(); // ${u.element.elementName}`;
+  return `    ${ref}.click(); // ${u.element.elementName}`;
+};
+
+const renderSeleniumScript = (
+  title: string,
+  steps: string[],
+  expectedResult: string,
+  groups: PageGroup[],
+  usages: ElementUsage[],
+): string => {
+  const imports = groups
+    .map(
+      (g) => `import com.example.pages.${g.className};`,
+    )
+    .join('\n');
+  const instantiations = groups
+    .map(
+      (g) => `        ${g.className} ${pageVarName(g)} = new ${g.className}(driver);`,
+    )
+    .join('\n');
+  const openPrimary = groups[0]
+    ? `        ${pageVarName(groups[0])}.open();`
+    : '';
+  const interactions = usages
+    .map((u, idx) => seleniumInteraction(u, idx))
+    .join('\n');
+  const safeTitle = title.replace(/[^A-Za-z0-9_]/g, '_');
+
+  return `import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+${imports}
+
+/**
+ * Steps:
+${steps.map((s, i) => ` * ${i + 1}. ${s}`).join('\n')}
+ * Expected: ${expectedResult}
+ */
+public class ${safeTitle} {
+    public static void main(String[] args) {
+        WebDriver driver = new ChromeDriver();
+        try {
+${instantiations}
+${openPrimary}
+${interactions}
+            // TODO: assert: ${expectedResult}
+        } finally {
+            driver.quit();
+        }
+    }
+}
+`;
+};
+
+const seleniumInteraction = (u: ElementUsage, idx: number): string => {
+  const getter = `${pageVarName(u.page)}.get${capitalize(safeIdent(u.element.elementName))}()`;
+  if (u.element.elementType === 'INPUT')
+    return `            ${getter}.sendKeys("VALUE_${idx + 1}"); // ${u.element.elementName}`;
+  return `            ${getter}.click(); // ${u.element.elementName}`;
+};
+
+const capitalize = (s: string): string =>
+  s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);

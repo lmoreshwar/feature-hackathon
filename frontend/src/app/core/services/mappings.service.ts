@@ -14,6 +14,24 @@ import {
 } from '../models';
 import { ApiService } from './api.service';
 
+export interface MappingStepSuggestion {
+  stepIndex: number;
+  step: string;
+  elementId: string | null;
+  elementName?: string;
+  selector?: string;
+  confidence?: number;
+  reason?: string;
+}
+
+export interface MappingSuggestionResult {
+  testCaseId: string;
+  featureId: string;
+  testSuiteId: string;
+  steps: MappingStepSuggestion[];
+  elementIds: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class MappingsService {
   private readonly api = inject(ApiService);
@@ -65,6 +83,15 @@ export class MappingsService {
       .patch<ApiEnvelope<ITestCaseElementMapping>, UpdateMappingPayload>(
         `${this.base}/${id}`,
         payload,
+      )
+      .pipe(map((res) => res.data ?? null));
+  }
+
+  suggest(testCaseId: string): Observable<MappingSuggestionResult | null> {
+    return this.api
+      .post<ApiEnvelope<MappingSuggestionResult>, { testCaseId: string }>(
+        `${this.base}/suggest`,
+        { testCaseId },
       )
       .pipe(map((res) => res.data ?? null));
   }
