@@ -15,6 +15,14 @@ export type IntegrationSection =
   | 'git'
   | 'browserstack';
 
+export interface ConnectionTestResult {
+  ok: boolean;
+  section: IntegrationSection;
+  message: string;
+  account?: string;
+  details?: Record<string, unknown>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class IntegrationsService {
   private readonly api = inject(ApiService);
@@ -45,5 +53,22 @@ export class IntegrationsService {
         `${this.base}/me/${section}`,
       )
       .pipe(map((res) => res.data ?? null));
+  }
+
+  testConnection(section: IntegrationSection): Observable<ConnectionTestResult> {
+    return this.api
+      .post<ApiEnvelope<ConnectionTestResult>>(
+        `${this.base}/me/${section}/test`,
+      )
+      .pipe(
+        map(
+          (res) =>
+            res.data ?? {
+              ok: false,
+              section,
+              message: res.message ?? 'No response from server',
+            },
+        ),
+      );
   }
 }

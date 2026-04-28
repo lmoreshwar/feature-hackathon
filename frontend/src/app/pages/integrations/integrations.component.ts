@@ -25,6 +25,7 @@ import {
   UpsertIntegrationPayload,
 } from '../../core/models';
 import {
+  ConnectionTestResult,
   IntegrationSection,
   IntegrationsService,
 } from '../../core/services/integrations.service';
@@ -64,9 +65,13 @@ export class IntegrationsComponent implements OnInit {
 
   protected readonly loading = signal(false);
   protected readonly saving = signal<IntegrationSection | null>(null);
+  protected readonly testing = signal<IntegrationSection | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly current = signal<MaskedIntegration | null>(null);
   protected readonly tokenVisible = signal<Record<string, boolean>>({});
+  protected readonly testResults = signal<
+    Partial<Record<IntegrationSection, ConnectionTestResult>>
+  >({});
 
   protected readonly jiraForm = this.fb.nonNullable.group({
     baseUrl: this.fb.nonNullable.control('', [Validators.required]),
@@ -149,9 +154,68 @@ export class IntegrationsComponent implements OnInit {
       next: (data) => {
         this.current.set(data);
         this.hydrate(data);
+        this.testResults.update((r) => {
+          const next = { ...r };
+          delete next[section];
+          return next;
+        });
         this.message.success(`${this.label(section)} cleared`);
       },
     });
+  }
+
+  protected testConnection(section: IntegrationSection): void {
+    if (this.testing()) return;
+    if (!this.hasSavedSection(section)) {
+      this.message.warning(
+        `Save your ${this.label(section)} settings before testing the connection.`,
+      );
+      return;
+    }
+
+    this.testing.set(section);
+    this.service
+      .testConnection(section)
+      .pipe(finalize(() => this.testing.set(null)))
+      .subscribe({
+        next: (result) => {
+          this.testResults.update((r) => ({ ...r, [section]: result }));
+          if (result.ok) {
+            this.message.success(result.message);
+          } else {
+            this.message.error(result.message);
+          }
+        },
+        error: (e: unknown) => {
+          const msg = toErrorMessage(e);
+          this.testResults.update((r) => ({
+            ...r,
+            [section]: { ok: false, section, message: msg },
+          }));
+          this.message.error(msg);
+        },
+      });
+  }
+
+  protected hasSavedSection(section: IntegrationSection): boolean {
+    const c = this.current();
+    if (!c) return false;
+    switch (section) {
+      case 'jira':
+        return !!c.jira;
+      case 'confluence':
+        return !!c.confluence;
+      case 'llm':
+        return !!c.llm;
+      case 'git':
+        return !!c.git;
+      case 'browserstack':
+        return !!c.browserstack;
+    }
+  }
+
+  protected testResult(section: IntegrationSection): ConnectionTestResult | undefined {
+    return this.testResults()[section];
   }
 
   private label(section: IntegrationSection): string {

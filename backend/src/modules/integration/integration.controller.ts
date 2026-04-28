@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
@@ -15,16 +16,21 @@ import { AccessTokenGuard } from '../auth/access-token.guard';
 import { AuthenticatedUser } from '../auth/auth.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UpsertIntegrationDto } from './dto/upsert-integration.dto';
+import {
+  IntegrationSection,
+  IntegrationTesterService,
+} from './integration-tester.service';
 import { IntegrationService } from './integration.service';
-
-type IntegrationSection = 'jira' | 'confluence' | 'llm' | 'git' | 'browserstack';
 
 @ApiTags('integrations')
 @ApiBearerAuth()
 @UseGuards(AccessTokenGuard)
 @Controller('integrations')
 export class IntegrationController {
-  constructor(private readonly integrationService: IntegrationService) {}
+  constructor(
+    private readonly integrationService: IntegrationService,
+    private readonly integrationTester: IntegrationTesterService,
+  ) {}
 
   @Get('me')
   async getMine(
@@ -51,5 +57,15 @@ export class IntegrationController {
   ): Promise<ApiResponse<unknown>> {
     const updated = await this.integrationService.clearSection(user.sub, section);
     return ok(`Integration section "${section}" cleared`, updated);
+  }
+
+  @Post('me/:section/test')
+  @HttpCode(HttpStatus.OK)
+  async test(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('section') section: IntegrationSection,
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.integrationTester.test(user.sub, section);
+    return ok(result.message, result);
   }
 }

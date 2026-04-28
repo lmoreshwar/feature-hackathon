@@ -42,11 +42,26 @@
               </ng-template>
             </nz-form-control>
           </nz-form-item>
+          @if (testResult('jira'); as r) {
+            <nz-alert
+              [nzType]="r.ok ? 'success' : 'error'"
+              [nzMessage]="r.ok ? 'Connected' : 'Connection failed'"
+              [nzDescription]="r.account ? r.message + ' · ' + r.account : r.message"
+              nzShowIcon
+              style="margin-top: 12px"></nz-alert>
+          }
           <div class="actions">
             <button nz-button nzDanger nz-popconfirm
               nzPopconfirmTitle="Clear Jira settings?" (nzOnConfirm)="clear('jira')"
               [disabled]="!current()?.jira">
               <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button (click)="testConnection('jira')"
+              [nzLoading]="testing() === 'jira'"
+              [disabled]="!hasSavedSection('jira')"
+              nz-tooltip
+              [nzTooltipTitle]="hasSavedSection('jira') ? 'Authenticate against Jira with the saved token' : 'Save settings before testing'">
+              <span nz-icon nzType="thunderbolt"></span> Test connection
             </button>
             <button nz-button nzType="primary" (click)="save('jira')"
               [nzLoading]="saving() === 'jira'">
@@ -86,11 +101,26 @@
               </ng-template>
             </nz-form-control>
           </nz-form-item>
+          @if (testResult('confluence'); as r) {
+            <nz-alert
+              [nzType]="r.ok ? 'success' : 'error'"
+              [nzMessage]="r.ok ? 'Connected' : 'Connection failed'"
+              [nzDescription]="r.account ? r.message + ' · ' + r.account : r.message"
+              nzShowIcon
+              style="margin-top: 12px"></nz-alert>
+          }
           <div class="actions">
             <button nz-button nzDanger nz-popconfirm
               nzPopconfirmTitle="Clear Confluence settings?" (nzOnConfirm)="clear('confluence')"
               [disabled]="!current()?.confluence">
               <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button (click)="testConnection('confluence')"
+              [nzLoading]="testing() === 'confluence'"
+              [disabled]="!hasSavedSection('confluence')"
+              nz-tooltip
+              [nzTooltipTitle]="hasSavedSection('confluence') ? 'Authenticate against Confluence with the saved token' : 'Save settings before testing'">
+              <span nz-icon nzType="thunderbolt"></span> Test connection
             </button>
             <button nz-button nzType="primary" (click)="save('confluence')"
               [nzLoading]="saving() === 'confluence'">
@@ -132,11 +162,26 @@
               </ng-template>
             </nz-form-control>
           </nz-form-item>
+          @if (testResult('llm'); as r) {
+            <nz-alert
+              [nzType]="r.ok ? 'success' : 'error'"
+              [nzMessage]="r.ok ? 'Connected' : 'Connection failed'"
+              [nzDescription]="r.account ? r.message + ' · ' + r.account : r.message"
+              nzShowIcon
+              style="margin-top: 12px"></nz-alert>
+          }
           <div class="actions">
             <button nz-button nzDanger nz-popconfirm
               nzPopconfirmTitle="Clear LLM settings?" (nzOnConfirm)="clear('llm')"
               [disabled]="!current()?.llm">
               <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button (click)="testConnection('llm')"
+              [nzLoading]="testing() === 'llm'"
+              [disabled]="!hasSavedSection('llm')"
+              nz-tooltip
+              [nzTooltipTitle]="hasSavedSection('llm') ? 'Authenticate against the LLM provider' : 'Save settings before testing'">
+              <span nz-icon nzType="thunderbolt"></span> Test connection
             </button>
             <button nz-button nzType="primary" (click)="save('llm')"
               [nzLoading]="saving() === 'llm'">
@@ -184,11 +229,26 @@
               </ng-template>
             </nz-form-control>
           </nz-form-item>
+          @if (testResult('git'); as r) {
+            <nz-alert
+              [nzType]="r.ok ? 'success' : 'error'"
+              [nzMessage]="r.ok ? 'Connected' : 'Connection failed'"
+              [nzDescription]="r.account ? r.message + ' · ' + r.account : r.message"
+              nzShowIcon
+              style="margin-top: 12px"></nz-alert>
+          }
           <div class="actions">
             <button nz-button nzDanger nz-popconfirm
               nzPopconfirmTitle="Clear Git settings?" (nzOnConfirm)="clear('git')"
               [disabled]="!current()?.git">
               <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button (click)="testConnection('git')"
+              [nzLoading]="testing() === 'git'"
+              [disabled]="!hasSavedSection('git')"
+              nz-tooltip
+              [nzTooltipTitle]="hasSavedSection('git') ? 'Authenticate against the Git provider' : 'Save settings before testing'">
+              <span nz-icon nzType="thunderbolt"></span> Test connection
             </button>
             <button nz-button nzType="primary" (click)="save('git')"
               [nzLoading]="saving() === 'git'">
@@ -222,11 +282,26 @@
               </ng-template>
             </nz-form-control>
           </nz-form-item>
+          @if (testResult('browserstack'); as r) {
+            <nz-alert
+              [nzType]="r.ok ? 'success' : 'error'"
+              [nzMessage]="r.ok ? 'Connected' : 'Connection failed'"
+              [nzDescription]="r.account ? r.message + ' · ' + r.account : r.message"
+              nzShowIcon
+              style="margin-top: 12px"></nz-alert>
+          }
           <div class="actions">
             <button nz-button nzDanger nz-popconfirm
               nzPopconfirmTitle="Clear BrowserStack settings?" (nzOnConfirm)="clear('browserstack')"
               [disabled]="!current()?.browserstack">
               <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button (click)="testConnection('browserstack')"
+              [nzLoading]="testing() === 'browserstack'"
+              [disabled]="!hasSavedSection('browserstack')"
+              nz-tooltip
+              [nzTooltipTitle]="hasSavedSection('browserstack') ? 'Authenticate against BrowserStack' : 'Save settings before testing'">
+              <span nz-icon nzType="thunderbolt"></span> Test connection
             </button>
             <button nz-button nzType="primary" (click)="save('browserstack')"
               [nzLoading]="saving() === 'browserstack'">

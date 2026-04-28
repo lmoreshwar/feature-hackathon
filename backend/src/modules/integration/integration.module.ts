@@ -8,6 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 import { IntegrationController } from './integration.controller';
 import { IntegrationRepository } from './integration.repository';
 import { IntegrationService } from './integration.service';
+import { IntegrationTesterService } from './integration-tester.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { IntegrationService } from './integration.service';
     AuthModule,
   ],
   controllers: [IntegrationController],
-  providers: [IntegrationService, IntegrationRepository],
-  exports: [IntegrationService, IntegrationRepository],
+  providers: [IntegrationService, IntegrationRepository, IntegrationTesterService],
+  exports: [IntegrationService, IntegrationRepository, IntegrationTesterService],
 })
 export class IntegrationModule {}
