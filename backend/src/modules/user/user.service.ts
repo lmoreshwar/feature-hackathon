@@ -8,9 +8,10 @@ import * as bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
+import { SearchUserDto } from './dto/search-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserDocument } from '../../common/schemas';
-import { PaginatedUsers, SafeUser } from './user.interface';
+import { PaginatedUsers, SafeUser, SearchUsersResult } from './user.interface';
 import { UpdateUserData, UserRepository } from './user.repository';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -70,6 +71,27 @@ export class UserService {
       items: items.map((u) => this.toSafeUser(u)),
       page,
       limit,
+      total,
+      totalPages,
+    };
+  }
+
+  async searchUsers(dto: SearchUserDto): Promise<SearchUsersResult> {
+    const pageIndex = dto.pageIndex ?? 1;
+    const pageSize = dto.pageSize ?? 10;
+    const search = dto.search?.trim();
+
+    const { items, total } = await this.userRepository.searchUsers({
+      pageIndex,
+      pageSize,
+      search,
+    });
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+
+    return {
+      items: items.map((u) => this.toSafeUser(u)),
+      pageIndex,
+      pageSize,
       total,
       totalPages,
     };

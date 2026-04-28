@@ -15,3 +15,11 @@ export interface PaginatedUsers {
   total: number;
   totalPages: number;
 }
+
+export interface SearchUsersResult {
+  items: SafeUser[];
+  pageIndex: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}

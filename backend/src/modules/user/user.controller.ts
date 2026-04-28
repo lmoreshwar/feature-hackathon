@@ -10,9 +10,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
+import { SearchUserDto } from './dto/search-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
@@ -41,6 +42,31 @@ export class UserController {
   @Get()
   async list(@Query() query: ListUsersQueryDto): Promise<ApiResponse<unknown>> {
     const result = await this.userService.listUsers(query);
+    return {
+      success: true,
+      message: 'Users fetched successfully',
+      data: result,
+    };
+  }
+
+  @Post('search')
+  @ApiOperation({ summary: 'Search users with pagination' })
+  @ApiBody({
+    type: SearchUserDto,
+    required: false,
+    examples: {
+      defaultSearch: {
+        summary: 'Default pagination',
+        value: {
+          pageIndex: 1,
+          pageSize: 10,
+          search: 'user@example.com',
+        },
+      },
+    },
+  })
+  async searchUsers(@Body() dto: SearchUserDto): Promise<ApiResponse<unknown>> {
+    const result = await this.userService.searchUsers(dto);
     return {
       success: true,
       message: 'Users fetched successfully',

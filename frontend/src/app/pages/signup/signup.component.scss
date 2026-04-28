@@ -2,7 +2,7 @@
   display: block;
 }
 
-.login-shell {
+.auth-shell {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -11,14 +11,14 @@
   background: linear-gradient(135deg, #0b1f3a 0%, #1f3a68 60%, #2f5fa6 100%);
 }
 
-.login-card {
+.auth-card {
   width: 100%;
   max-width: 420px;
   border-radius: 14px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
 }
 
-.login-header {
+.auth-header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -53,11 +53,11 @@
   color: rgba(0, 0, 0, 0.55);
 }
 
-.login-alert {
+.auth-alert {
   margin-bottom: 20px;
 }
 
-.login-footer {
+.auth-footer {
   margin: 24px 0 0;
   text-align: center;
   font-size: 13px;

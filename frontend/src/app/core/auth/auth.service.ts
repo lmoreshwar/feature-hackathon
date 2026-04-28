@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, EMPTY, Observable, catchError, map, of, tap } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { ApiService } from '../services/api.service';
 import {
@@ -13,6 +13,8 @@ import {
   MeResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  SignupRequest,
+  SignupResponse,
 } from './auth.models';
 import { TokenService } from './token.service';
 
@@ -45,6 +47,25 @@ export class AuthService {
       map((response) => this.extractSession(response)),
       tap((session) => this.persistSession(session)),
     );
+  }
+
+  /**
+   * Registers a new user via `POST /api/users` and then immediately exchanges
+   * the credentials for an access/refresh token pair via the existing
+   * `login()` flow. The backend has no dedicated signup endpoint; account
+   * creation is intentionally a thin wrapper around the user CRUD endpoint.
+   */
+  signup(payload: SignupRequest): Observable<AuthSession> {
+    return this.api
+      .post<SignupResponse, SignupRequest>('/users', {
+        email: payload.email,
+        password: payload.password,
+      })
+      .pipe(
+        switchMap(() =>
+          this.login({ email: payload.email, password: payload.password }),
+        ),
+      );
   }
 
   logout(): Observable<void> {
