@@ -101,6 +101,26 @@ export class TestCasesService {
       .pipe(map((res) => res.data ?? { updated: 0, affectedFeatureIds: [] }));
   }
 
+  recomputeAutomation(
+    scope: { featureId?: string; testSuiteId?: string } = {},
+  ): Observable<RecomputeAutomationResult> {
+    return this.api
+      .post<
+        ApiEnvelope<RecomputeAutomationResult>,
+        { featureId?: string; testSuiteId?: string }
+      >(`${this.base}/recompute-automation`, scope)
+      .pipe(
+        map(
+          (res) =>
+            res.data ?? {
+              scanned: 0,
+              changed: 0,
+              changes: [],
+            },
+        ),
+      );
+  }
+
   remove(id: string): Observable<void> {
     return this.api
       .delete<ApiEnvelope<unknown>>(`${this.base}/${id}`)
@@ -147,4 +167,16 @@ export interface CoverageReviewResult {
 export interface BulkStatusResult {
   updated: number;
   affectedFeatureIds: string[];
+}
+
+export interface RecomputeAutomationResult {
+  scanned: number;
+  changed: number;
+  changes: Array<{
+    id: string;
+    title: string;
+    from: boolean;
+    to: boolean;
+    reason: string;
+  }>;
 }

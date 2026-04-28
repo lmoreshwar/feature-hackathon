@@ -106,6 +106,7 @@ export class TestCasesComponent implements OnInit {
   private readonly selectedIds = signal<Set<string>>(new Set());
   protected readonly selectedCount = computed(() => this.selectedIds().size);
   protected readonly bulkBusy = signal(false);
+  protected readonly recomputing = signal(false);
 
   @ViewChild(TestCaseFormDrawerComponent) private drawer?: TestCaseFormDrawerComponent;
 
@@ -230,6 +231,40 @@ export class TestCasesComponent implements OnInit {
         next: (r) => {
           this.message.success(`Rejected ${r.updated} test case(s)`);
           this.clearSelection();
+          this.fetch();
+          this.refreshKpis();
+        },
+      });
+  }
+
+  /**
+   * Re-runs the automation-feasibility heuristic on existing test cases
+   * (scoped by the active feature/suite filter when set, otherwise the
+   * whole DB) and refreshes the table + KPI cards. Useful after relaxing
+   * the prompt rules so historical rows that were marked manual get
+   * flipped back to automation when they qualify.
+   */
+  protected recomputeAutomation(): void {
+    if (this.recomputing()) return;
+    this.recomputing.set(true);
+    const scope: { featureId?: string; testSuiteId?: string } = {};
+    if (this.featureControl.value) scope.featureId = this.featureControl.value;
+    if (this.suiteControl.value) scope.testSuiteId = this.suiteControl.value;
+
+    this.testCasesService
+      .recomputeAutomation(scope)
+      .pipe(finalize(() => this.recomputing.set(false)))
+      .subscribe({
+        next: (r) => {
+          if (r.changed === 0) {
+            this.message.info(
+              `Re-evaluated ${r.scanned} test case(s); nothing to change.`,
+            );
+          } else {
+            this.message.success(
+              `Re-evaluated ${r.scanned} test case(s); flipped ${r.changed} to match the new rules.`,
+            );
+          }
           this.fetch();
           this.refreshKpis();
         },

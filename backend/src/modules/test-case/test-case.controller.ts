@@ -134,6 +134,22 @@ export class TestCaseController {
     return ok(`Rejected ${result.updated} test case(s)`, result);
   }
 
+  @Post('recompute-automation')
+  @HttpCode(HttpStatus.OK)
+  async recomputeAutomation(
+    @Body() body: { featureId?: string; testSuiteId?: string },
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseService.recomputeAutomation({
+      featureId: body?.featureId,
+      testSuiteId: body?.testSuiteId,
+    });
+    const message =
+      result.changed === 0
+        ? `Re-evaluated ${result.scanned} test case(s); no changes needed.`
+        : `Re-evaluated ${result.scanned} test case(s); flipped ${result.changed} to match the new heuristic.`;
+    return ok(message, result);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const result = await this.testCaseService.delete(id);

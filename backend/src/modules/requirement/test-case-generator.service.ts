@@ -10,6 +10,10 @@ import { IntegrationRepository } from '../integration/integration.repository';
 import { JiraFetcherService } from '../integration/jira-fetcher.service';
 import { TestSuiteRepository } from '../test-suite/test-suite.repository';
 import { TestSuiteService } from '../test-suite/test-suite.service';
+import {
+  inferAutomationFeasible,
+  shouldOverrideToAutomation,
+} from '../test-case/automation-feasibility.util';
 import { TestCaseRecord } from '../test-case/test-case.interface';
 import { TestCaseService } from '../test-case/test-case.service';
 import { CreateTestCaseDto } from '../test-case/dto/create-test-case.dto';
@@ -97,17 +101,22 @@ Examples: ["Login","Authentication"], ["Cart","Checkout"], ["API","Validation"],
 ## COMMENTS (optional notes the tester should know)
 Short notes such as "Verify on Chrome and Firefox", "Re-run after fix XYZ", "[NOT SPECIFIED]".
 
-## AUTOMATION FEASIBILITY (MANDATORY \u2014 same logic as AI_Agents Execution Tag = "Automation")
-Set "automationFeasible": true ONLY when ALL of the following are true:
-- Steps are deterministic and repeatable (no manual judgement, no \"looks ok\", no exploratory testing).
-- Expected result is programmatically verifiable (a value, message, status code, DOM element, count, redirect, error code, etc.).
-- Test data is concrete OR can be parameterised with \${variables}.
-- No reliance on subjective UX, look-and-feel, accessibility opinions, or human-in-the-loop checks.
-- No reliance on out-of-system actions (real OTP from a phone, real payment gateway, etc.) UNLESS clearly mockable.
-- Category is one of POSITIVE / NEGATIVE / BOUNDARY / SECURITY / VALIDATION / FUNCTIONAL / E2E. UI cosmetic checks are usually NOT feasible \u2014 set false.
-Otherwise set "automationFeasible": false.
+## AUTOMATION FEASIBILITY (MANDATORY \u2014 DEFAULT IS true)
+The default value of "automationFeasible" is **true**. Mark it false ONLY for these narrow, specific cases:
+1. The test relies on visual inspection, look-and-feel review, accessibility opinions, or other subjective human judgement (e.g. "verify the page looks clean", "check the colour palette feels right").
+2. The test requires a real-world physical action that cannot be mocked (real OTP from a physical phone, real biometric scan, real letter in the mail, real cash payment, talking to a human support agent).
+3. The test is purely exploratory \u2014 "kick the tyres" \u2014 with no concrete pass/fail criterion.
+
+EVERYTHING ELSE is automation-feasible. This explicitly INCLUDES:
+- All POSITIVE, NEGATIVE, BOUNDARY, SECURITY, VALIDATION and FUNCTIONAL category tests.
+- Tests where testData is "[NOT SPECIFIED]" \u2014 the test author can fill in concrete data later; missing testData is NOT a reason to mark false.
+- Tests where expectedResult is paraphrased (e.g. "user is redirected") rather than a literal selector \u2014 the test author can sharpen the assertion later.
+- E2E flows, even multi-step ones, as long as each step is something a script can perform.
+- Tests that reference UI elements that have not yet been crawled \u2014 the mapping step happens later.
+
 Also: when automationFeasible is true, ADD the literal tag "Automation" to the tags array (in addition to feature tags). When false, do NOT add "Automation".
-Aim for AT LEAST 70% of generated test cases to be automation-feasible \u2014 most functional, negative, boundary, security and validation tests qualify.
+
+TARGET: At least 90% of generated test cases MUST be automationFeasible:true. If you find yourself marking more than 10% as false, you are being too conservative \u2014 re-read rules 1-3 above and only keep "false" for cases that genuinely match one of them.
 
 ## OUTPUT FORMAT (STRICT JSON \u2014 no markdown, no code fences, no prose)
 Return ONLY a single JSON object of this EXACT shape:
@@ -559,25 +568,42 @@ export class TestCaseGeneratorService {
         : []);
 
     const tags = this.asStringArray(raw['tags']).slice(0, 8);
+    const description = this.asString(raw['description']);
+    const type = this.asEnum(raw['type'], [
+      'FUNCTIONAL',
+      'REGRESSION',
+      'SMOKE',
+      'E2E',
+    ]);
+
     let automationFeasible = this.asBoolean(
       raw['automationFeasible'] ?? raw['automation_feasible'] ?? raw['automation'],
     );
     if (automationFeasible === undefined) {
-      automationFeasible = this.inferAutomationFeasible({
-        description: this.asString(raw['description']),
-        type: this.asEnum(raw['type'], [
-          'FUNCTIONAL',
-          'REGRESSION',
-          'SMOKE',
-          'E2E',
-        ]),
+      automationFeasible = inferAutomationFeasible({ description, tags });
+    } else if (
+      automationFeasible === false &&
+      shouldOverrideToAutomation({
+        description,
+        expectedResult,
+        steps,
         tags,
-      });
+      })
+    ) {
+      // Safety net: LLMs are often too conservative about the
+      // automationFeasible flag (esp. when testData is "[NOT SPECIFIED]"
+      // they default to false). Flip to true when the case carries an
+      // automation-friendly category tag and shows no manual-only signals,
+      // so we don't drown the user in false negatives.
+      this.logger.debug(
+        `Overriding automationFeasible: false \u2192 true for "${title.slice(0, 60)}" (clearly-automatable category)`,
+      );
+      automationFeasible = true;
     }
 
     return {
       title: title.slice(0, 200),
-      description: this.asString(raw['description']),
+      description,
       preconditions,
       steps,
       expectedResult,
@@ -592,41 +618,10 @@ export class TestCaseGeneratorService {
         'HIGH',
         'CRITICAL',
       ]),
-      type: this.asEnum(raw['type'], [
-        'FUNCTIONAL',
-        'REGRESSION',
-        'SMOKE',
-        'E2E',
-      ]),
+      type,
     };
   }
 
-  /**
-   * Heuristic safety net used when the LLM forgets the automationFeasible
-   * flag. Same intent as the AI_Agents Execution-Tag rule:
-   * - UI cosmetic checks are usually NOT automation candidates.
-   * - Functional / negative / boundary / security / validation / smoke
-   *   tests usually ARE.
-   */
-  private inferAutomationFeasible(input: {
-    description?: string;
-    type?: 'FUNCTIONAL' | 'REGRESSION' | 'SMOKE' | 'E2E';
-    tags: string[];
-  }): boolean {
-    const text = `${input.description ?? ''} ${input.tags.join(' ')}`.toLowerCase();
-    const uiOnly = /\[ui\]|look[- ]and[- ]feel|cosmetic|visual review|exploratory|usability/.test(
-      text,
-    );
-    if (uiOnly) return false;
-    const candidate = /\[(positive|negative|boundary|security|validation|functional)\]/.test(
-      text,
-    );
-    if (candidate) return true;
-    if (input.type === 'SMOKE' || input.type === 'FUNCTIONAL' || input.type === 'REGRESSION') {
-      return true;
-    }
-    return false;
-  }
 
   private asBoolean(v: unknown): boolean | undefined {
     if (typeof v === 'boolean') return v;
