@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.features-card {
+  border-radius: 10px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1 1 280px;
+  max-width: 320px;
+}
+
+.status-filter {
+  width: 180px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.feature-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.feature-name {
+  font-weight: 600;
+  color: #1f2d3d;
+  font-size: 14px;
+}
+
+.feature-desc {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}

@@ -23,6 +23,7 @@ export class SidebarComponent {
 
   protected readonly menuItems: MenuItem[] = [
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
+    { label: 'Features', icon: 'appstore', route: '/features' },
     { label: 'Users', icon: 'team', route: '/users' },
     { label: 'Settings', icon: 'setting', route: '/settings' },
   ];

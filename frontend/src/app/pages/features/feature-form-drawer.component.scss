@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+.drawer-alert {
+  margin-bottom: 16px;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metric-item {
+  ::ng-deep nz-input-number {
+    width: 100%;
+  }
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

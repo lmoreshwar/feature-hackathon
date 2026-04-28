@@ -39,6 +39,12 @@ export const appRoutes: Routes = [
         title: 'Users · Hackathon Console',
       },
       {
+        path: 'features',
+        loadComponent: () =>
+          import('./pages/features/features.component').then((m) => m.FeaturesComponent),
+        title: 'Features · Hackathon Console',
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings.component').then((m) => m.SettingsComponent),

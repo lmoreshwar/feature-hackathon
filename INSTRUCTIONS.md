@@ -454,3 +454,311 @@ Frontend owner uses this as the prompt anchor when asking Cursor / image-gen too
 ---
 
 **End of Specification v2.1**
+
+
+
+
+
+
+You are a senior full-stack architect.
+
+Build the Quantum AI application end-to-end using the attached TypeScript interfaces as the source of truth.
+
+Tech stack:
+- Backend: NestJS + MongoDB + Mongoose
+- Frontend: Angular + NG-ZORRO
+- Auth: Access token + refresh token
+- API style: REST
+- Language: TypeScript
+
+Use these interfaces exactly:
+- IUser
+- IFeature
+- ITestSuite
+- ITestCase
+- IRequirementSource
+- IPageElement
+- ITestCaseElementMapping
+- ITestExecution
+- IIntegrationSettings
+- IReferenceInfo
+- IBaseCollection
+- EAppPage
+
+Do not add extra DB fields unless clearly required.
+
+Backend Requirements:
+
+1. Create NestJS modules:
+- auth
+- users
+- features
+- test-suites
+- requirements
+- test-cases
+- page-elements
+- testcase-mappings
+- test-executions
+- integrations
+- dashboard/metrics
+
+2. For every module create:
+- schema
+- dto
+- repository
+- service
+- controller
+- module
+
+3. Use MongoDB with Mongoose.
+- IBaseCollection fields must exist in all schemas:
+  - _id
+  - createdAt as number timestamp
+  - updatedAt as number timestamp
+
+4. Add CRUD APIs for:
+- users
+- features
+- test suites
+- requirements
+- test cases
+- page elements
+- mappings
+- executions
+- integrations
+
+5. Add POST pagination APIs for each list screen:
+Example:
+POST /api/features/search
+
+Request:
+{
+  "pageIndex": 1,
+  "pageSize": 10,
+  "search": "",
+  "filters": {},
+  "sort": {
+    "createdAt": "desc"
+  }
+}
+
+Response:
+{
+  "success": true,
+  "message": "Fetched successfully",
+  "data": {
+    "items": [],
+    "pageIndex": 1,
+    "pageSize": 10,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+
+6. Auth:
+- POST /api/auth/login
+- POST /api/auth/refresh
+- POST /api/auth/logout
+- GET /api/auth/me
+- Use JWT access token and refresh token
+- Store passwordHash only, never return it in response
+
+7. Business flow:
+User
+ -> Feature
+ -> Test Suite
+ -> Requirement Source
+ -> Test Case
+ -> Page Element
+ -> Test Case Element Mapping
+ -> Script Generation
+ -> Git Push Status
+ -> Test Execution
+ -> Metrics / Traceability
+
+8. Module rules:
+Feature:
+- Create/update/archive feature
+- Track totalSuites, totalTestCases, coveragePercentage
+
+Test Suite:
+- Belongs to featureId
+- Track totalTests, passedTests, failedTests, skippedTests, passPercentage
+
+Requirement Source:
+- Belongs to featureId and optional testSuiteId
+- Accept jiraId, confluenceUrl, or requirementText
+- Track PENDING, PROCESSED, FAILED
+
+Test Case:
+- Belongs to featureId and testSuiteId
+- Store title, description, preconditions, steps, expectedResult
+- Support priority LOW, MEDIUM, HIGH, CRITICAL
+- Support type FUNCTIONAL, REGRESSION, SMOKE, E2E
+- Support status GENERATED, APPROVED, REJECTED, NEEDS_REVIEW
+
+Page Element:
+- Belongs to featureId and optional testSuiteId
+- Store pageUrl, pageName, elementName, elementType, selector, selectorType, isStable
+
+Mapping:
+- Belongs to featureId, testSuiteId, testCaseId
+- Store elementIds
+- Store generatedScript
+- Support scriptType PLAYWRIGHT, CYPRESS, SELENIUM
+- Track gitPushStatus NOT_PUSHED, PUSHED, FAILED
+
+Execution:
+- Belongs to featureId and optional testSuiteId
+- Support provider BROWSERSTACK or LOCAL
+- Track status QUEUED, RUNNING, PASSED, FAILED, CANCELLED
+- Store reportUrl, videoUrl, logsUrl
+
+Integrations:
+- Store Jira, Confluence, LLM, Git, BrowserStack settings
+- Encrypt apiTokenEncrypted, tokenEncrypted, accessKeyEncrypted, apiKeyEncrypted before saving
+
+Frontend Requirements:
+
+1. Create Angular app using NG-ZORRO only.
+
+2. Pages based on EAppPage:
+- Login
+- Dashboard
+- Feature Details
+- Settings Integration
+- Requirement Input
+- Test Case Review
+- Requirement Traceability
+- Page Crawl
+- Test Case Element Mapping
+- Build Execution
+
+3. Layout:
+- After login, show dashboard layout
+- Use NG-ZORRO:
+  - nz-layout
+  - nz-sider
+  - nz-header
+  - nz-content
+  - nz-menu
+  - nz-table
+  - nz-form
+  - nz-input
+  - nz-select
+  - nz-button
+  - nz-card
+  - nz-modal
+  - nz-drawer
+  - nz-tag
+  - nz-alert
+  - nz-spin
+  - nz-message
+
+4. Frontend structure:
+src/app/
+ ├── core/
+ │   ├── auth/
+ │   ├── interceptors/
+ │   ├── guards/
+ │   ├── services/
+ │   └── models/
+ ├── layout/
+ ├── pages/
+ │   ├── login/
+ │   ├── dashboard/
+ │   ├── features/
+ │   ├── test-suites/
+ │   ├── requirements/
+ │   ├── test-cases/
+ │   ├── page-elements/
+ │   ├── mappings/
+ │   ├── executions/
+ │   ├── integrations/
+ │   └── traceability/
+ └── shared/
+     ├── components/
+     ├── pipes/
+     └── utils/
+
+5. Frontend features:
+- Login page
+- Auth guard
+- Guest guard
+- Token service
+- Auth interceptor with refresh token retry
+- Error interceptor
+- Reusable pagination table
+- Reusable create/edit modal
+- Reusable delete confirmation
+- Reusable status tags
+- Global loading and toast messages
+
+6. Dashboard:
+Show cards:
+- Total Features
+- Total Test Suites
+- Total Test Cases
+- Approved Test Cases
+- Automated Test Cases
+- Passed Executions
+- Failed Executions
+- Coverage Percentage
+
+7. Feature page:
+- List features
+- Create/edit/archive feature
+- Open feature details
+
+8. Test Suite page:
+- List suites by featureId
+- Create/edit/archive suite
+
+9. Requirement page:
+- Add Jira ID
+- Add Confluence URL
+- Add raw requirement text
+- Submit and create requirement source
+
+10. Test Case Review:
+- List generated test cases
+- Inline edit
+- Approve/reject/needs review
+
+11. Page Crawl:
+- Enter page URL
+- Save page elements manually or from mock crawl response
+- Show selector details
+
+12. Mapping:
+- Pick test case
+- Pick page elements
+- Generate script
+- Show generated script
+- Push to Git and update gitPushStatus
+
+13. Execution:
+- Pick feature/test suite
+- Trigger execution
+- Show status, reportUrl, videoUrl, logsUrl
+
+14. Settings:
+- Forms for Jira, Confluence, LLM, Git, BrowserStack
+- Mask sensitive fields
+- Save encrypted values through backend
+
+15. API integration:
+- Create Angular services for every backend module
+- No hardcoded API URLs in components
+- Use environment.apiBaseUrl
+
+16. Validation:
+- Use Angular Reactive Forms
+- Show proper NG-ZORRO validation messages
+- Disable buttons while submitting
+
+17. Output:
+Generate complete backend and frontend code.
+Follow existing workspace structure.
+Do not break current login module.
+Use the attached interfaces as the contract.

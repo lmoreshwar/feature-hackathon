@@ -9,20 +9,20 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { AccessTokenGuard } from '../auth/access-token.guard';
+import { ApiResponse, ok } from '../../common/interfaces/api-response.interface';
 import { CreateFeatureDto } from './dto/create-feature.dto';
 import { ListFeaturesQueryDto } from './dto/list-features.query.dto';
+import { SearchFeatureDto } from './dto/search-feature.dto';
 import { UpdateFeatureDto } from './dto/update-feature.dto';
 import { FeatureService } from './feature.service';
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-}
-
 @ApiTags('features')
+@ApiBearerAuth()
+@UseGuards(AccessTokenGuard)
 @Controller('features')
 export class FeatureController {
   constructor(private readonly featureService: FeatureService) {}
@@ -31,31 +31,28 @@ export class FeatureController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateFeatureDto): Promise<ApiResponse<unknown>> {
     const feature = await this.featureService.createFeature(dto);
-    return {
-      success: true,
-      message: 'Feature created successfully',
-      data: feature,
-    };
+    return ok('Feature created successfully', feature);
   }
 
   @Get()
-  async list(@Query() query: ListFeaturesQueryDto): Promise<ApiResponse<unknown>> {
+  async list(
+    @Query() query: ListFeaturesQueryDto,
+  ): Promise<ApiResponse<unknown>> {
     const result = await this.featureService.listFeatures(query);
-    return {
-      success: true,
-      message: 'Features fetched successfully',
-      data: result,
-    };
+    return ok('Features fetched successfully', result);
+  }
+
+  @Post('search')
+  @HttpCode(HttpStatus.OK)
+  async search(@Body() dto: SearchFeatureDto): Promise<ApiResponse<unknown>> {
+    const result = await this.featureService.searchFeatures(dto);
+    return ok('Fetched successfully', result);
   }
 
   @Get(':id')
   async getOne(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const feature = await this.featureService.getFeatureById(id);
-    return {
-      success: true,
-      message: 'Feature fetched successfully',
-      data: feature,
-    };
+    return ok('Feature fetched successfully', feature);
   }
 
   @Patch(':id')
@@ -64,20 +61,19 @@ export class FeatureController {
     @Body() dto: UpdateFeatureDto,
   ): Promise<ApiResponse<unknown>> {
     const feature = await this.featureService.updateFeature(id, dto);
-    return {
-      success: true,
-      message: 'Feature updated successfully',
-      data: feature,
-    };
+    return ok('Feature updated successfully', feature);
+  }
+
+  @Post(':id/archive')
+  @HttpCode(HttpStatus.OK)
+  async archive(@Param('id') id: string): Promise<ApiResponse<unknown>> {
+    const feature = await this.featureService.archiveFeature(id);
+    return ok('Feature archived successfully', feature);
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const result = await this.featureService.deleteFeature(id);
-    return {
-      success: true,
-      message: 'Feature deleted successfully',
-      data: result,
-    };
+    return ok('Feature deleted successfully', result);
   }
 }

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, UpdateQuery } from 'mongoose';
 import { FEATURE_MODEL_NAME, FeatureDocument } from '../../common/schemas/feature.schema';
+import { SearchDto } from '../../common/dto/search.dto';
+import { buildSearchQuery } from '../../common/utils/search-query.util';
 import { FeatureStatus } from './feature.interface';
 
 export interface CreateFeatureData {
@@ -49,7 +51,6 @@ export class FeatureRepository {
       createdAt: now,
       updatedAt: now,
     });
-
     return this.findById(created._id.toString());
   }
 
@@ -92,6 +93,28 @@ export class FeatureRepository {
     ]);
 
     return { items, total };
+  }
+
+  async search(dto: SearchDto): Promise<ListFeaturesResult> {
+    const { filter, sort, skip, limit } = buildSearchQuery<FeatureDocument>(dto, {
+      searchableFields: ['name', 'description'],
+      allowedFilterFields: ['status', 'createdBy'],
+    });
+
+    const [items, total] = await Promise.all([
+      this.featureModel.find(filter).sort(sort).skip(skip).limit(limit).exec(),
+      this.featureModel.countDocuments(filter).exec(),
+    ]);
+
+    return { items, total };
+  }
+
+  async countByStatus(status: FeatureStatus): Promise<number> {
+    return this.featureModel.countDocuments({ status }).exec();
+  }
+
+  async countAll(): Promise<number> {
+    return this.featureModel.countDocuments().exec();
   }
 
   async update(id: string, data: UpdateFeatureData): Promise<FeatureDocument | null> {

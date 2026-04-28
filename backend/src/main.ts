@@ -84,14 +84,22 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Hackathon API')
-    .setDescription('API documentation for the Hackathon backend')
+    .setTitle('Quantum AI API')
+    .setDescription('API documentation for the Quantum AI backend')
     .setVersion('1.0.0')
     .addBearerAuth()
     .addTag('app')
     .addTag('auth')
-    .addTag('features')
     .addTag('users')
+    .addTag('features')
+    .addTag('test-suites')
+    .addTag('requirements')
+    .addTag('test-cases')
+    .addTag('page-elements')
+    .addTag('testcase-mappings')
+    .addTag('test-executions')
+    .addTag('integrations')
+    .addTag('dashboard')
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

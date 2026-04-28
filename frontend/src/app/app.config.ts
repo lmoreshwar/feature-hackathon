@@ -8,11 +8,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import {
   ApiOutline,
+  AppstoreOutline,
   ArrowDownOutline,
   ArrowUpOutline,
   DashboardOutline,
   DeleteOutline,
   DownOutline,
+  EditOutline,
   ExperimentOutline,
   LockOutline,
   LoginOutline,
@@ -20,6 +22,7 @@ import {
   MailOutline,
   MenuFoldOutline,
   MenuUnfoldOutline,
+  PlusOutline,
   ReloadOutline,
   SearchOutline,
   SettingOutline,
@@ -35,11 +38,13 @@ import { errorInterceptor } from './core/interceptors/error.interceptor';
 
 const NZ_ICONS = [
   ApiOutline,
+  AppstoreOutline,
   ArrowDownOutline,
   ArrowUpOutline,
   DashboardOutline,
   DeleteOutline,
   DownOutline,
+  EditOutline,
   ExperimentOutline,
   LockOutline,
   LoginOutline,
@@ -47,6 +52,7 @@ const NZ_ICONS = [
   MailOutline,
   MenuFoldOutline,
   MenuUnfoldOutline,
+  PlusOutline,
   ReloadOutline,
   SearchOutline,
   SettingOutline,

@@ -6,8 +6,11 @@ import {
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { FeatureDocument } from '../../common/schemas/feature.schema';
+import { PaginatedResult } from '../../common/interfaces/api-response.interface';
+import { paginate } from '../../common/utils/search-query.util';
 import { CreateFeatureDto } from './dto/create-feature.dto';
 import { ListFeaturesQueryDto } from './dto/list-features.query.dto';
+import { SearchFeatureDto } from './dto/search-feature.dto';
 import { UpdateFeatureDto } from './dto/update-feature.dto';
 import { FeatureRecord, PaginatedFeatures } from './feature.interface';
 import { FeatureFilters, FeatureRepository, UpdateFeatureData } from './feature.repository';
@@ -129,6 +132,33 @@ export class FeatureService {
       throw new NotFoundException(`Feature with id "${id}" not found`);
     }
 
+    return this.toFeatureRecord(updated);
+  }
+
+  async searchFeatures(
+    dto: SearchFeatureDto,
+  ): Promise<PaginatedResult<FeatureRecord>> {
+    const pageIndex = dto.pageIndex ?? 1;
+    const pageSize = dto.pageSize ?? 10;
+
+    const { items, total } = await this.featureRepository.search(dto);
+
+    return paginate(
+      items.map((item) => this.toFeatureRecord(item)),
+      total,
+      pageIndex,
+      pageSize,
+    );
+  }
+
+  async archiveFeature(id: string): Promise<FeatureRecord> {
+    this.assertValidObjectId(id);
+    const updated = await this.featureRepository.update(id, {
+      status: 'ARCHIVED',
+    });
+    if (!updated) {
+      throw new NotFoundException(`Feature with id "${id}" not found`);
+    }
     return this.toFeatureRecord(updated);
   }
 

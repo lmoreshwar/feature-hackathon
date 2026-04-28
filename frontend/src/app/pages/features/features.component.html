@@ -1,0 +1,122 @@
+<h2 class="app-page-title">Features</h2>
+<p class="app-page-subtitle">Track features, their lifecycle status and coverage.</p>
+
+<nz-card [nzBordered]="false" class="features-card">
+  <div class="toolbar">
+    <nz-input-group nzPrefixIcon="search" class="search-input">
+      <input
+        nz-input
+        type="search"
+        placeholder="Search by name"
+        [formControl]="searchControl"
+      />
+    </nz-input-group>
+
+    <nz-select
+      class="status-filter"
+      nzAllowClear
+      nzPlaceHolder="All statuses"
+      [formControl]="statusControl"
+    >
+      @for (status of statuses; track status) {
+        <nz-option [nzValue]="status" [nzLabel]="status"></nz-option>
+      }
+    </nz-select>
+
+    <span class="toolbar-spacer"></span>
+
+    <button nz-button nzType="default" (click)="refresh()" [nzLoading]="loading()">
+      <span nz-icon nzType="reload"></span>
+      Refresh
+    </button>
+
+    <button nz-button nzType="primary" (click)="openCreate()">
+      <span nz-icon nzType="plus"></span>
+      New feature
+    </button>
+  </div>
+
+  <nz-table
+    nzShowSizeChanger
+    [nzData]="features()"
+    [nzLoading]="loading()"
+    [nzFrontPagination]="false"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[10, 20, 50]"
+    (nzQueryParams)="onQueryParamsChange($event)"
+    nzSize="middle"
+  >
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th nzWidth="110px">Status</th>
+        <th nzWidth="100px" nzAlign="right">Suites</th>
+        <th nzWidth="120px" nzAlign="right">Test cases</th>
+        <th nzWidth="180px">Coverage</th>
+        <th nzWidth="180px">Updated</th>
+        <th nzWidth="120px" nzAlign="right">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (feature of features(); track feature._id) {
+        <tr>
+          <td>
+            <div class="feature-cell">
+              <span class="feature-name">{{ feature.name }}</span>
+              @if (feature.description) {
+                <span class="feature-desc" nz-tooltip [nzTooltipTitle]="feature.description">
+                  {{ feature.description }}
+                </span>
+              }
+            </div>
+          </td>
+          <td>
+            <nz-tag [nzColor]="statusColors[feature.status]">{{ feature.status }}</nz-tag>
+          </td>
+          <td nzAlign="right">{{ feature.totalSuites ?? 0 }}</td>
+          <td nzAlign="right">{{ feature.totalTestCases ?? 0 }}</td>
+          <td>
+            <nz-progress
+              [nzPercent]="feature.coveragePercentage ?? 0"
+              [nzStrokeColor]="coverageColor(feature.coveragePercentage)"
+              nzSize="small"
+            ></nz-progress>
+          </td>
+          <td>{{ feature.updatedAt ? (feature.updatedAt | date: 'medium') : '-' }}</td>
+          <td nzAlign="right">
+            <button
+              nz-button
+              nzType="text"
+              nz-tooltip
+              nzTooltipTitle="Edit"
+              (click)="openEdit(feature)"
+            >
+              <span nz-icon nzType="edit"></span>
+            </button>
+            <button
+              nz-button
+              nzType="text"
+              nzDanger
+              nz-popconfirm
+              nzPopconfirmTitle="Delete this feature?"
+              nzPopconfirmPlacement="topRight"
+              (nzOnConfirm)="delete(feature)"
+            >
+              <span nz-icon nzType="delete"></span>
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7">
+            <nz-empty nzNotFoundImage="simple" nzNotFoundContent="No features yet"></nz-empty>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</nz-card>
+
+<app-feature-form-drawer (saved)="onSaved()"></app-feature-form-drawer>
