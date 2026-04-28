@@ -1,0 +1,31 @@
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  background: #fff;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+.app-content {
+  margin: 0;
+  background: #f0f2f5;
+  overflow: auto;
+}
+
+.app-content-inner {
+  padding: 24px;
+  min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 600px) {
+  .app-content-inner {
+    padding: 16px;
+  }
+}

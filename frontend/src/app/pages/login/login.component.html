@@ -1,0 +1,85 @@
+<div class="login-shell">
+  <nz-card class="login-card" [nzBordered]="false">
+    <div class="login-header">
+      <span class="brand-mark">HK</span>
+      <h1 class="brand-title">Hackathon Console</h1>
+      <p class="brand-subtitle">Sign in with your work email to continue.</p>
+    </div>
+
+    @if (errorMessage(); as msg) {
+      <nz-alert
+        nzType="error"
+        [nzMessage]="msg"
+        nzShowIcon
+        class="login-alert"
+        [nzCloseable]="true"
+        (nzOnClose)="errorMessage.set(null)"
+      ></nz-alert>
+    }
+
+    <nz-spin [nzSpinning]="submitting()">
+      <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="submit()">
+        <nz-form-item>
+          <nz-form-label nzRequired nzFor="email">Email</nz-form-label>
+          <nz-form-control [nzErrorTip]="emailError">
+            <nz-input-group nzPrefixIcon="mail">
+              <input
+                nz-input
+                id="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@company.com"
+                formControlName="email"
+              />
+            </nz-input-group>
+            <ng-template #emailError let-control>
+              @if (control.hasError('required')) {
+                Email is required.
+              } @else if (control.hasError('email')) {
+                Enter a valid email address.
+              }
+            </ng-template>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired nzFor="password">Password</nz-form-label>
+          <nz-form-control [nzErrorTip]="passwordError">
+            <nz-input-group nzPrefixIcon="lock">
+              <input
+                nz-input
+                id="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Your password"
+                formControlName="password"
+              />
+            </nz-input-group>
+            <ng-template #passwordError let-control>
+              @if (control.hasError('required')) {
+                Password is required.
+              } @else if (control.hasError('minlength')) {
+                Password must be at least 8 characters.
+              }
+            </ng-template>
+          </nz-form-control>
+        </nz-form-item>
+
+        <button
+          nz-button
+          nzType="primary"
+          nzBlock
+          type="submit"
+          [disabled]="submitting() || form.invalid"
+          [nzLoading]="submitting()"
+        >
+          Sign in
+        </button>
+      </form>
+    </nz-spin>
+
+    <p class="login-footer">
+      Need help? Contact your workspace administrator.
+    </p>
+  </nz-card>
+</div>

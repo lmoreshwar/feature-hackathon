@@ -1,0 +1,29 @@
+<nz-layout class="app-layout">
+  <nz-sider
+    nzCollapsible
+    nzBreakpoint="md"
+    [nzCollapsed]="collapsed()"
+    (nzCollapsedChange)="setCollapsed($event)"
+    [nzTrigger]="null"
+    [nzWidth]="232"
+    [nzCollapsedWidth]="64"
+    nzTheme="dark"
+  >
+    <app-sidebar [collapsed]="collapsed()"></app-sidebar>
+  </nz-sider>
+
+  <nz-layout>
+    <nz-header class="app-header">
+      <app-header
+        [collapsed]="collapsed()"
+        (collapsedChange)="setCollapsed($event)"
+      ></app-header>
+    </nz-header>
+
+    <nz-content class="app-content">
+      <div class="app-content-inner">
+        <router-outlet></router-outlet>
+      </div>
+    </nz-content>
+  </nz-layout>
+</nz-layout>

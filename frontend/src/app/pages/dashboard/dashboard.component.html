@@ -1,0 +1,79 @@
+<h2 class="app-page-title">
+  @if (currentUser(); as user) {
+    Welcome back, {{ user.email }}
+  } @else {
+    Welcome back
+  }
+</h2>
+<p class="app-page-subtitle">Here is a quick snapshot of your workspace.</p>
+
+<div nz-row [nzGutter]="[16, 16]" class="stats-row">
+  @for (stat of stats; track stat.title) {
+    <div nz-col [nzXs]="24" [nzSm]="12" [nzLg]="6">
+      <nz-card class="stat-card" [nzBordered]="false">
+        <div class="stat-row">
+          <span class="stat-icon" [style.background]="stat.color + '1f'" [style.color]="stat.color">
+            <span nz-icon [nzType]="stat.icon"></span>
+          </span>
+          <nz-tag [nzColor]="stat.trend === 'up' ? 'green' : 'red'" class="stat-delta">
+            <span nz-icon [nzType]="stat.trend === 'up' ? 'arrow-up' : 'arrow-down'"></span>
+            {{ stat.delta }}
+          </nz-tag>
+        </div>
+        <nz-statistic [nzValue]="stat.value" [nzTitle]="stat.title"></nz-statistic>
+      </nz-card>
+    </div>
+  }
+</div>
+
+<div nz-row [nzGutter]="[16, 16]" class="content-row">
+  <div nz-col [nzXs]="24" [nzLg]="16">
+    <nz-card nzTitle="Recent activity" [nzBordered]="false">
+      <ul class="activity-list">
+        <li>
+          <span nz-icon nzType="login" nzTheme="outline"></span>
+          <div>
+            <strong>Successful sign-in</strong>
+            <p>Authentication tokens issued via /auth/login.</p>
+          </div>
+        </li>
+        <li>
+          <span nz-icon nzType="reload" nzTheme="outline"></span>
+          <div>
+            <strong>Tokens refreshed</strong>
+            <p>Access token rotated automatically by the auth interceptor.</p>
+          </div>
+        </li>
+        <li>
+          <span nz-icon nzType="user" nzTheme="outline"></span>
+          <div>
+            <strong>Profile loaded</strong>
+            <p>Current user fetched from /auth/me.</p>
+          </div>
+        </li>
+      </ul>
+    </nz-card>
+  </div>
+
+  <div nz-col [nzXs]="24" [nzLg]="8">
+    <nz-card nzTitle="System status" [nzBordered]="false">
+      <ul class="status-list">
+        <li>
+          <span class="dot dot-up"></span>
+          API gateway
+          <span class="status-tag">Operational</span>
+        </li>
+        <li>
+          <span class="dot dot-up"></span>
+          Authentication
+          <span class="status-tag">Operational</span>
+        </li>
+        <li>
+          <span class="dot dot-warn"></span>
+          Background jobs
+          <span class="status-tag warn">Degraded</span>
+        </li>
+      </ul>
+    </nz-card>
+  </div>
+</div>

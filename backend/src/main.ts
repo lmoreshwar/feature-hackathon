@@ -62,6 +62,16 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
+  const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:4200')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: corsOrigins.length > 0 ? corsOrigins : true,
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

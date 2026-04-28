@@ -1,0 +1,75 @@
+<h2 class="app-page-title">Users</h2>
+<p class="app-page-subtitle">Browse the workspace users registered in the backend.</p>
+
+<nz-card [nzBordered]="false" class="users-card">
+  <div class="toolbar">
+    <nz-input-group nzPrefixIcon="search" class="search-input">
+      <input
+        nz-input
+        type="search"
+        placeholder="Search by email"
+        [formControl]="searchControl"
+      />
+    </nz-input-group>
+
+    <button nz-button nzType="default" (click)="refresh()" [nzLoading]="loading()">
+      <span nz-icon nzType="reload"></span>
+      Refresh
+    </button>
+  </div>
+
+  <nz-table
+    nzShowSizeChanger
+    [nzData]="users()"
+    [nzLoading]="loading()"
+    [nzFrontPagination]="false"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[10, 20, 50]"
+    (nzQueryParams)="onQueryParamsChange($event)"
+    nzSize="middle"
+  >
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th nzWidth="220px">Created</th>
+        <th nzWidth="220px">Updated</th>
+        <th nzWidth="120px" nzAlign="right">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (user of users(); track user._id) {
+        <tr>
+          <td>
+            <div class="user-cell">
+              <span class="avatar">{{ (user.email[0] || '?').toUpperCase() }}</span>
+              <span>{{ user.email }}</span>
+            </div>
+          </td>
+          <td>{{ user.createdAt ? (user.createdAt | date: 'medium') : '-' }}</td>
+          <td>{{ user.updatedAt ? (user.updatedAt | date: 'medium') : '-' }}</td>
+          <td nzAlign="right">
+            <button
+              nz-button
+              nzType="text"
+              nzDanger
+              nz-popconfirm
+              nzPopconfirmTitle="Delete this user?"
+              nzPopconfirmPlacement="topRight"
+              (nzOnConfirm)="delete(user)"
+            >
+              <span nz-icon nzType="delete"></span>
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4">
+            <nz-empty nzNotFoundImage="simple" nzNotFoundContent="No users found"></nz-empty>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</nz-card>

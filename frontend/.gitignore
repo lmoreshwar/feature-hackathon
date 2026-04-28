@@ -1,0 +1,67 @@
+# =============================================================================
+# Angular / NG-ZORRO frontend .gitignore
+# =============================================================================
+
+# ----- Compiled output -----
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# ----- Node -----
+/node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+.pnpm-store/
+
+# ----- Angular CLI -----
+/.angular/cache
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+
+# ----- Tests / coverage -----
+/coverage
+.nyc_output/
+playwright-report/
+test-results/
+
+# ----- IDE / editor -----
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+.history/
+
+# Visual Studio Code (keep shared workspace settings, ignore personal noise)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ----- Caches -----
+.sass-cache/
+.eslintcache
+.stylelintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# ----- OS files -----
+.DS_Store
+Thumbs.db
+
+# ----- Environment / secrets -----
+.env
+.env.*
+!.env.example
+
+# ----- Misc -----
+*.tgz
+*.log

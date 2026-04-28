@@ -1,0 +1,23 @@
+<div class="logo">
+  <span class="logo-mark">HK</span>
+  @if (!collapsed) {
+    <span class="logo-text">Hackathon Console</span>
+  }
+</div>
+
+<ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="collapsed">
+  @for (item of menuItems; track item.route) {
+    <li
+      nz-menu-item
+      nzMatchRouter
+      routerLinkActive
+      #rla="routerLinkActive"
+      [nzSelected]="rla.isActive"
+    >
+      <a [routerLink]="item.route">
+        <span nz-icon [nzType]="item.icon"></span>
+        <span>{{ item.label }}</span>
+      </a>
+    </li>
+  }
+</ul>

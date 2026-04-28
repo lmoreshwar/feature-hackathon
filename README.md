@@ -6,7 +6,7 @@ This workspace currently contains a NestJS backend and Docker configuration for 
 
 - `backend/`: NestJS API with JWT authentication and Swagger
 - `docker/`: Docker Compose setup for MongoDB
-- `frontend/`: Frontend folder placeholder
+- `frontend/`: Angular 21 + NG-ZORRO console (see `frontend/README.md`)
 
 ## Prerequisites
 

@@ -1,0 +1,36 @@
+<div class="header-left">
+  <button
+    nz-button
+    nzType="text"
+    class="trigger"
+    (click)="toggleCollapsed()"
+    [attr.aria-label]="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+  >
+    <span nz-icon [nzType]="collapsed ? 'menu-unfold' : 'menu-fold'"></span>
+  </button>
+  <h1 class="title">Console</h1>
+</div>
+
+<div class="header-right">
+  @if (currentUser(); as user) {
+    <a nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" class="user-trigger">
+      <nz-avatar [nzText]="initials(user.email)" nzSize="default" class="avatar"></nz-avatar>
+      <span class="user-email">{{ user.email }}</span>
+      <span nz-icon nzType="down" class="caret"></span>
+    </a>
+
+    <nz-dropdown-menu #userMenu="nzDropdownMenu">
+      <ul nz-menu>
+        <li nz-menu-item nzDisabled>
+          <span nz-icon nzType="user"></span>
+          <span class="menu-email">{{ user.email }}</span>
+        </li>
+        <li nz-menu-divider></li>
+        <li nz-menu-item (click)="confirmLogout()">
+          <span nz-icon nzType="logout"></span>
+          <span>Sign out</span>
+        </li>
+      </ul>
+    </nz-dropdown-menu>
+  }
+</div>

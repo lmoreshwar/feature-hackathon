@@ -1,0 +1,87 @@
+# =============================================================================
+# Root .gitignore — applies to the whole hackathon monorepo.
+# Per-project ignores live in backend/.gitignore and frontend/.gitignore.
+# =============================================================================
+
+# ----- Dependencies -----
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/install-state.gz
+
+# ----- Build output -----
+dist/
+**/dist/
+build/
+out/
+out-tsc/
+.next/
+.nuxt/
+.turbo/
+.angular/cache/
+
+# ----- Environment & secrets -----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# ----- Logs -----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ----- Test / coverage output -----
+coverage/
+.nyc_output/
+*.lcov
+junit.xml
+test-results/
+playwright-report/
+
+# ----- Caches -----
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# ----- Editor / IDE -----
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.history/
+*.sublime-workspace
+*.sublime-project
+
+# ----- OS noise -----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ----- Docker -----
+docker/data/
+docker/volumes/
+
+# ----- Misc -----
+*.tgz
+*.zip
+.tmp/
+tmp/

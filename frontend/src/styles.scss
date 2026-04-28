@@ -1,0 +1,39 @@
+/* Global application styles. NG-ZORRO base styles are loaded via angular.json. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  background-color: #f0f2f5;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: #1677ff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.app-page-title {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.app-page-subtitle {
+  margin: -8px 0 24px;
+  color: rgba(0, 0, 0, 0.55);
+}
