@@ -6,9 +6,13 @@ import {
 } from '../../common/schemas';
 import { AuthModule } from '../auth/auth.module';
 import { FeatureModule } from '../feature/feature.module';
+import { IntegrationModule } from '../integration/integration.module';
+import { TestCaseModule } from '../test-case/test-case.module';
+import { TestSuiteModule } from '../test-suite/test-suite.module';
 import { RequirementController } from './requirement.controller';
 import { RequirementRepository } from './requirement.repository';
 import { RequirementService } from './requirement.service';
+import { TestCaseGeneratorService } from './test-case-generator.service';
 
 @Module({
   imports: [
@@ -17,9 +21,12 @@ import { RequirementService } from './requirement.service';
     ]),
     AuthModule,
     FeatureModule,
+    TestSuiteModule,
+    TestCaseModule,
+    IntegrationModule,
   ],
   controllers: [RequirementController],
-  providers: [RequirementService, RequirementRepository],
+  providers: [RequirementService, RequirementRepository, TestCaseGeneratorService],
   exports: [RequirementService, RequirementRepository],
 })
 export class RequirementModule {}

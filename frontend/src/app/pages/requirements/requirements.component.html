@@ -192,6 +192,34 @@
 
   <div nz-col [nzXs]="24" [nzLg]="14">
     <nz-card nzTitle="Recent requirements" [nzBordered]="false">
+      @if (lastGeneration(); as g) {
+        <nz-alert
+          [nzType]="g.generated > 0 ? 'success' : 'warning'"
+          nzShowIcon
+          class="alert"
+          [nzMessage]="
+            g.generated > 0
+              ? 'Generated ' + g.generated + ' test case' + (g.generated === 1 ? '' : 's') + ' (' + g.source + ')'
+              : 'No test cases were generated'
+          "
+          [nzDescription]="genTpl"
+          nzCloseable
+          (nzOnClose)="dismissGeneration()"
+        ></nz-alert>
+        <ng-template #genTpl>
+          @if (g.warnings && g.warnings.length) {
+            <ul class="warnings">
+              @for (w of g.warnings; track w) { <li>{{ w }}</li> }
+            </ul>
+          }
+          @if (g.generated > 0) {
+            <button nz-button nzSize="small" nzType="link" (click)="openGeneratedTestCases(g)">
+              Open in Test Cases →
+            </button>
+          }
+        </ng-template>
+      }
+
       <div class="toolbar">
         <nz-select class="filter" nzPlaceHolder="All features" nzAllowClear nzShowSearch [formControl]="featureFilter">
           @for (f of features(); track f._id) {
@@ -225,10 +253,10 @@
         <thead>
           <tr>
             <th>Source</th>
-            <th nzWidth="160px">Feature</th>
-            <th nzWidth="120px">Status</th>
-            <th nzWidth="160px">Created</th>
-            <th nzWidth="160px" nzAlign="right">Actions</th>
+            <th nzWidth="140px">Feature</th>
+            <th nzWidth="110px">Status</th>
+            <th nzWidth="140px">Created</th>
+            <th nzWidth="260px" nzAlign="right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -241,6 +269,19 @@
               <td><app-status-tag [status]="r.status"></app-status-tag></td>
               <td>{{ r.createdAt | epoch: 'short' }}</td>
               <td nzAlign="right">
+                <button
+                  nz-button
+                  nzType="primary"
+                  nzSize="small"
+                  (click)="generateTestCases(r)"
+                  [nzLoading]="generatingId() === r._id"
+                  [disabled]="!!generatingId() && generatingId() !== r._id"
+                  nz-tooltip
+                  nzTooltipTitle="Generate test cases from this requirement"
+                >
+                  <span nz-icon nzType="experiment"></span>
+                  Create test cases
+                </button>
                 <button
                   nz-button
                   nzType="text"

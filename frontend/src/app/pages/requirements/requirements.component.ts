@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -32,7 +33,10 @@ import {
   JiraTicketResult,
   JiraTicketSummary,
 } from '../../core/services/integrations.service';
-import { RequirementsService } from '../../core/services/requirements.service';
+import {
+  GenerateTestCasesResult,
+  RequirementsService,
+} from '../../core/services/requirements.service';
 import { TestSuitesService } from '../../core/services/test-suites.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatusTagComponent } from '../../shared/components/status-tag/status-tag.component';
@@ -76,6 +80,7 @@ interface RequirementForm {
 })
 export class RequirementsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly requirementsService = inject(RequirementsService);
   private readonly featuresService = inject(FeaturesService);
   private readonly suitesService = inject(TestSuitesService);
@@ -101,6 +106,9 @@ export class RequirementsComponent implements OnInit {
   protected readonly jiraLoading = signal(false);
   protected readonly jiraError = signal<string | null>(null);
   protected readonly jiraTicket = signal<JiraTicketResult | null>(null);
+
+  protected readonly generatingId = signal<string | null>(null);
+  protected readonly lastGeneration = signal<GenerateTestCasesResult | null>(null);
 
   protected readonly form = this.fb.nonNullable.group<RequirementForm>({
     featureId: this.fb.nonNullable.control('', [Validators.required]),
@@ -221,6 +229,53 @@ export class RequirementsComponent implements OnInit {
         this.fetch();
       },
     });
+  }
+
+  protected generateTestCases(r: IRequirementSource): void {
+    if (this.generatingId()) return;
+
+    this.generatingId.set(r._id);
+    this.lastGeneration.set(null);
+    const loadingId = this.message.loading(
+      'Generating test cases from this requirement…',
+      { nzDuration: 0 },
+    ).messageId;
+
+    this.requirementsService
+      .generateTestCases(r._id)
+      .pipe(finalize(() => {
+        this.generatingId.set(null);
+        this.message.remove(loadingId);
+      }))
+      .subscribe({
+        next: (result) => {
+          this.lastGeneration.set(result);
+          if (result.generated > 0) {
+            this.message.success(
+              `Generated ${result.generated} test case${result.generated === 1 ? '' : 's'} (${result.source.toLowerCase()})`,
+            );
+            for (const w of result.warnings ?? []) {
+              this.message.warning(w);
+            }
+          } else {
+            this.message.warning('No test cases were generated.');
+          }
+          this.fetch();
+        },
+        error: (e: unknown) => {
+          this.message.error(toErrorMessage(e));
+        },
+      });
+  }
+
+  protected openGeneratedTestCases(r: GenerateTestCasesResult): void {
+    void this.router.navigate(['/test-cases'], {
+      queryParams: { featureId: r.requirement.featureId },
+    });
+  }
+
+  protected dismissGeneration(): void {
+    this.lastGeneration.set(null);
   }
 
   protected featureName(id: string): string {
