@@ -3,6 +3,161 @@
   subtitle="Bind a test case to real selectors, generate the script, and ship it to Git."
 ></app-page-header>
 
+<!-- ================================================================== -->
+<!--   BULK PLAYWRIGHT BUNDLE                                           -->
+<!--   For all automation-feasible APPROVED test cases under a feature  -->
+<!-- ================================================================== -->
+<nz-card [nzBordered]="false" class="bundle-card">
+  <div class="bundle-header">
+    <div class="bundle-title">
+      <span nz-icon nzType="thunderbolt" class="bundle-icon"></span>
+      <div>
+        <div class="t">Generate Playwright bundle (Pages + Specs)</div>
+        <div class="s">
+          One click → for every <strong>automation-feasible</strong> APPROVED test
+          case under the chosen feature, generate the Page Object files (locators)
+          and the Spec files (test execution). Uses crawled page elements when
+          available, falls back to a STUB script otherwise.
+        </div>
+      </div>
+    </div>
+
+    <div class="bundle-controls">
+      <nz-select
+        class="bundle-feature"
+        nzPlaceHolder="Pick a feature"
+        nzShowSearch
+        [formControl]="bundleFeatureId"
+      >
+        @for (f of features(); track f._id) {
+          <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option>
+        }
+      </nz-select>
+      <button
+        nz-button
+        nzType="primary"
+        nzSize="large"
+        (click)="runBundleGeneration()"
+        [nzLoading]="bundleLoading()"
+        [disabled]="!bundleFeatureId.value"
+      >
+        <span nz-icon nzType="thunderbolt"></span> Generate bundle
+      </button>
+    </div>
+  </div>
+
+  @if (bundle(); as b) {
+    <nz-divider></nz-divider>
+
+    <div class="bundle-stats">
+      <nz-statistic [nzValue]="b.specFiles.length" nzTitle="Spec files">
+        <ng-template #nzPrefix><span nz-icon nzType="experiment"></span></ng-template>
+      </nz-statistic>
+      <nz-statistic [nzValue]="b.pomFiles.length" nzTitle="Page objects" [nzValueStyle]="{ color: '#1677ff' }">
+        <ng-template #nzPrefix><span nz-icon nzType="appstore"></span></ng-template>
+      </nz-statistic>
+      <nz-statistic [nzValue]="b.processed" nzTitle="Generated" [nzValueStyle]="{ color: '#16a34a' }">
+        <ng-template #nzPrefix><span nz-icon nzType="check-circle"></span></ng-template>
+      </nz-statistic>
+      @if (b.skipped > 0) {
+        <nz-statistic [nzValue]="b.skipped" nzTitle="Skipped" [nzValueStyle]="{ color: '#dc2626' }">
+          <ng-template #nzPrefix><span nz-icon nzType="warning"></span></ng-template>
+        </nz-statistic>
+      }
+      <div class="bundle-actions">
+        <button nz-button (click)="downloadBundleZip()" [nzLoading]="bundleZipping()"
+          [disabled]="b.specFiles.length === 0 && b.pomFiles.length === 0">
+          <span nz-icon nzType="cloud-download"></span> Download ZIP
+        </button>
+        <button nz-button nzType="primary" (click)="pushBundleToGit()" [nzLoading]="bundlePushing()"
+          [disabled]="b.specFiles.length === 0">
+          <span nz-icon nzType="github"></span> Push all to Git
+        </button>
+      </div>
+    </div>
+
+    @for (w of b.warnings; track w) {
+      <nz-alert nzType="warning" [nzMessage]="w" nzShowIcon class="bundle-warn"></nz-alert>
+    }
+
+    <nz-tabs class="bundle-tabs">
+      <nz-tab [nzTitle]="pagesTitle">
+        <ng-template #pagesTitle>
+          <span nz-icon nzType="appstore"></span>
+          Pages ({{ b.pomFiles.length }})
+        </ng-template>
+        @if (b.pomFiles.length === 0) {
+          <nz-empty
+            nzNotFoundContent="No crawled page elements yet. Run the Page Crawler for this feature, then regenerate."
+          ></nz-empty>
+        } @else {
+          <nz-collapse nzAccordion class="file-list">
+            @for (p of b.pomFiles; track p.fileName) {
+              <nz-collapse-panel [nzHeader]="pageHdr">
+                <ng-template #pageHdr>
+                  <div class="file-hdr">
+                    <span nz-icon nzType="file-text" class="file-icon"></span>
+                    <code class="file-name">pages/{{ p.fileName }}</code>
+                    <nz-tag>{{ p.elementCount }} locators</nz-tag>
+                    <span class="file-meta" nz-tooltip [nzTooltipTitle]="p.pageUrl">
+                      {{ p.pageName }}
+                    </span>
+                  </div>
+                </ng-template>
+                <div class="file-actions">
+                  <button nz-button nzSize="small" (click)="copyToClipboard(p.content, p.fileName)">
+                    <span nz-icon nzType="copy"></span> Copy
+                  </button>
+                </div>
+                <pre class="file-code">{{ p.content }}</pre>
+              </nz-collapse-panel>
+            }
+          </nz-collapse>
+        }
+      </nz-tab>
+
+      <nz-tab [nzTitle]="specsTitle">
+        <ng-template #specsTitle>
+          <span nz-icon nzType="experiment"></span>
+          Specs ({{ b.specFiles.length }})
+        </ng-template>
+        @if (b.specFiles.length === 0) {
+          <nz-empty
+            nzNotFoundContent="No automation-feasible APPROVED test cases for this feature."
+          ></nz-empty>
+        } @else {
+          <nz-collapse nzAccordion class="file-list">
+            @for (s of b.specFiles; track s.fileName) {
+              <nz-collapse-panel [nzHeader]="specHdr">
+                <ng-template #specHdr>
+                  <div class="file-hdr">
+                    <span nz-icon nzType="file-text" class="file-icon"></span>
+                    <code class="file-name">tests/{{ s.fileName }}</code>
+                    @if (s.isStub) {
+                      <nz-tag nzColor="orange">STUB</nz-tag>
+                    } @else {
+                      <nz-tag nzColor="blue">{{ s.elementsUsed }} elements</nz-tag>
+                    }
+                    <span class="file-meta">{{ s.testCaseTitle }}</span>
+                  </div>
+                </ng-template>
+                <div class="file-actions">
+                  <button nz-button nzSize="small" (click)="copyToClipboard(s.content, s.fileName)">
+                    <span nz-icon nzType="copy"></span> Copy
+                  </button>
+                </div>
+                <pre class="file-code">{{ s.content }}</pre>
+              </nz-collapse-panel>
+            }
+          </nz-collapse>
+        }
+      </nz-tab>
+    </nz-tabs>
+  }
+</nz-card>
+
+<nz-divider class="section-divider">Per-test-case mapping</nz-divider>
+
 <div nz-row [nzGutter]="[16, 16]">
   <div nz-col [nzXs]="24" [nzLg]="10">
     <nz-card nzTitle="Pick test case" [nzBordered]="false">

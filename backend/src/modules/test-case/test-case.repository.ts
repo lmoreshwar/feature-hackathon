@@ -141,4 +141,18 @@ export class TestCaseRepository {
   async findApproved(): Promise<TestCaseDocument[]> {
     return this.model.find({ status: 'APPROVED' }).sort({ createdAt: -1 }).exec();
   }
+
+  /**
+   * All APPROVED + automationFeasible test cases under a feature, in the
+   * order they were created. Used by the "Generate Playwright bundle"
+   * flow on the Mappings page.
+   */
+  async findAutomationFeasibleByFeature(
+    featureId: string,
+  ): Promise<TestCaseDocument[]> {
+    return this.model
+      .find({ featureId, status: 'APPROVED', automationFeasible: true })
+      .sort({ createdAt: 1 })
+      .exec();
+  }
 }

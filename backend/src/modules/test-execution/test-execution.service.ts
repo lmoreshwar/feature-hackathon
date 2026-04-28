@@ -5,8 +5,15 @@ import { paginate } from '../../common/utils/search-query.util';
 import { assertValidObjectId } from '../../common/utils/object-id.util';
 import { BrowserStackRunnerService } from './browserstack-runner.service';
 import { CreateExecutionDto } from './dto/create-execution.dto';
+import { RunFromGitDto } from './dto/run-from-git.dto';
+import { RunWorkflowDto } from './dto/run-workflow.dto';
 import { SearchExecutionDto } from './dto/search-execution.dto';
 import { UpdateExecutionDto } from './dto/update-execution.dto';
+import {
+  GitRepo,
+  GitRunnerService,
+  GitWorkflow,
+} from './git-runner.service';
 import {
   ExecutionRecord,
   ExecutionStatus,
@@ -18,6 +25,7 @@ export class ExecutionService {
   constructor(
     private readonly executionRepository: ExecutionRepository,
     private readonly browserStackRunner: BrowserStackRunnerService,
+    private readonly gitRunner: GitRunnerService,
   ) {}
 
   async trigger(
@@ -61,6 +69,96 @@ export class ExecutionService {
         triggeredBy,
       );
     }
+
+    return record;
+  }
+
+  /**
+   * Trigger a Playwright run from a user's connected git branch on
+   * BrowserStack. Creates a QUEUED execution record and dispatches the
+   * git-runner asynchronously so the HTTP call returns immediately and
+   * the UI can poll `GET /test-executions/:id` for live counts.
+   */
+  async triggerFromGit(
+    dto: RunFromGitDto,
+    triggeredBy: string,
+  ): Promise<ExecutionRecord> {
+    assertValidObjectId(dto.featureId, 'featureId');
+
+    const created = await this.executionRepository.create({
+      featureId: dto.featureId,
+      testCaseIds: [],
+      buildName: dto.buildName.trim(),
+      provider: 'BROWSERSTACK',
+      status: 'QUEUED',
+      totalTests: 0,
+      logsUrl: `Cloning ${dto.repoUrl ? '(override repo)' : 'connected repo'} @ ${dto.branch}…`,
+      triggeredBy,
+    });
+    const record = this.toRecord(created);
+
+    void this.gitRunner.runInBackground(
+      {
+        executionId: record._id,
+        branch: dto.branch,
+        buildName: record.buildName,
+        repoUrlOverride: dto.repoUrl,
+        testPath: dto.testPath,
+      },
+      triggeredBy,
+    );
+
+    return record;
+  }
+
+  async listGitRepos(userId: string): Promise<GitRepo[]> {
+    return this.gitRunner.listRepos(userId);
+  }
+
+  async listGitBranches(userId: string, repo?: string): Promise<string[]> {
+    return this.gitRunner.listBranches(userId, repo);
+  }
+
+  async listGitWorkflows(
+    userId: string,
+    repo?: string,
+  ): Promise<GitWorkflow[]> {
+    return this.gitRunner.listWorkflows(userId, repo);
+  }
+
+  /**
+   * Trigger a GitHub Actions workflow_dispatch on the chosen branch and
+   * track the resulting run. Creates a QUEUED execution that the dispatcher
+   * mutates as the workflow progresses.
+   */
+  async runGitWorkflow(
+    dto: RunWorkflowDto,
+    triggeredBy: string,
+  ): Promise<ExecutionRecord> {
+    assertValidObjectId(dto.featureId, 'featureId');
+
+    const created = await this.executionRepository.create({
+      featureId: dto.featureId,
+      testCaseIds: [],
+      buildName: dto.buildName.trim(),
+      provider: 'BROWSERSTACK',
+      status: 'QUEUED',
+      totalTests: 0,
+      logsUrl: `Dispatching ${dto.workflowFile} on ${dto.branch}${dto.repo ? ` (${dto.repo})` : ''}…`,
+      triggeredBy,
+    });
+    const record = this.toRecord(created);
+
+    void this.gitRunner.dispatchAndTrackWorkflow(
+      {
+        executionId: record._id,
+        workflowFile: dto.workflowFile,
+        branch: dto.branch,
+        buildName: record.buildName,
+        repo: dto.repo,
+      },
+      triggeredBy,
+    );
 
     return record;
   }

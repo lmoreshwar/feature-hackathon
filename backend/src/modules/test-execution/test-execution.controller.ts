@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -16,6 +17,8 @@ import { AccessTokenGuard } from '../auth/access-token.guard';
 import { AuthenticatedUser } from '../auth/auth.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateExecutionDto } from './dto/create-execution.dto';
+import { RunFromGitDto } from './dto/run-from-git.dto';
+import { RunWorkflowDto } from './dto/run-workflow.dto';
 import { SearchExecutionDto } from './dto/search-execution.dto';
 import { UpdateExecutionDto } from './dto/update-execution.dto';
 import { ExecutionService } from './test-execution.service';
@@ -35,6 +38,55 @@ export class ExecutionController {
   ): Promise<ApiResponse<unknown>> {
     const created = await this.executionService.trigger(dto, user.sub);
     return ok('Execution triggered successfully', created);
+  }
+
+  @Post('run-from-git')
+  @HttpCode(HttpStatus.CREATED)
+  async runFromGit(
+    @Body() dto: RunFromGitDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const created = await this.executionService.triggerFromGit(dto, user.sub);
+    return ok('Git-based execution triggered', created);
+  }
+
+  @Get('git/repos')
+  async listGitRepos(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const repos = await this.executionService.listGitRepos(user.sub);
+    return ok('Repos fetched', { repos });
+  }
+
+  @Get('git/branches')
+  async listGitBranches(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('repo') repo?: string,
+  ): Promise<ApiResponse<unknown>> {
+    const branches = await this.executionService.listGitBranches(user.sub, repo);
+    return ok('Branches fetched', { branches });
+  }
+
+  @Get('git/workflows')
+  async listGitWorkflows(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('repo') repo?: string,
+  ): Promise<ApiResponse<unknown>> {
+    const workflows = await this.executionService.listGitWorkflows(
+      user.sub,
+      repo,
+    );
+    return ok('Workflows fetched', { workflows });
+  }
+
+  @Post('run-workflow')
+  @HttpCode(HttpStatus.CREATED)
+  async runGitWorkflow(
+    @Body() dto: RunWorkflowDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const created = await this.executionService.runGitWorkflow(dto, user.sub);
+    return ok('GitHub Actions workflow dispatched', created);
   }
 
   @Post('search')

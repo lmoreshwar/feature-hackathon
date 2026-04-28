@@ -10,6 +10,7 @@ import { PageElementModule } from '../page-element/page-element.module';
 import { TestCaseModule } from '../test-case/test-case.module';
 import { TestcaseMappingModule } from '../testcase-mapping/testcase-mapping.module';
 import { BrowserStackRunnerService } from './browserstack-runner.service';
+import { GitRunnerService } from './git-runner.service';
 import { ExecutionController } from './test-execution.controller';
 import { ExecutionRepository } from './test-execution.repository';
 import { ExecutionService } from './test-execution.service';
@@ -26,7 +27,12 @@ import { ExecutionService } from './test-execution.service';
     PageElementModule,
   ],
   controllers: [ExecutionController],
-  providers: [ExecutionService, ExecutionRepository, BrowserStackRunnerService],
+  providers: [
+    ExecutionService,
+    ExecutionRepository,
+    BrowserStackRunnerService,
+    GitRunnerService,
+  ],
   exports: [ExecutionService, ExecutionRepository],
 })
 export class TestExecutionModule {}

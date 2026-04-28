@@ -22,6 +22,7 @@ import { SearchMappingDto } from './dto/search-mapping.dto';
 import { SuggestMappingDto } from './dto/suggest-mapping.dto';
 import { UpdateMappingDto } from './dto/update-mapping.dto';
 import { MappingService } from './testcase-mapping.service';
+import { ScriptType } from './testcase-mapping.interface';
 
 @ApiTags('testcase-mappings')
 @ApiBearerAuth()
@@ -66,6 +67,34 @@ export class MappingController {
       user.sub,
     );
     return ok('Mapping suggestions generated', suggestion);
+  }
+
+  @Post('bulk-generate-for-feature')
+  @HttpCode(HttpStatus.OK)
+  async bulkGenerateForFeature(
+    @Body() body: { featureId: string; scriptType?: ScriptType },
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.mappingService.bulkGenerateForFeature(
+      body?.featureId,
+      user.sub,
+      body?.scriptType ?? 'PLAYWRIGHT',
+    );
+    return ok(
+      `Generated ${result.specFiles.length} spec(s) and ${result.pomFiles.length} page object(s)`,
+      result,
+    );
+  }
+
+  @Post('bulk-push-to-git')
+  @HttpCode(HttpStatus.OK)
+  async bulkPushToGit(
+    @Body() body: { mappingIds: string[] },
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.mappingService.bulkPushToGit(
+      body?.mappingIds ?? [],
+    );
+    return ok(`Pushed ${result.pushed} mapping(s)`, result);
   }
 
   @Get(':id')

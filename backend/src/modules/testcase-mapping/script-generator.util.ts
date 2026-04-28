@@ -89,6 +89,12 @@ const renderPlaywrightScript = (
   groups: PageGroup[],
   usages: ElementUsage[],
 ): string => {
+  // Empty crawl → emit a clearly-marked STUB script so the engineer can
+  // fill in selectors after running the crawler.
+  if (groups.length === 0) {
+    return renderPlaywrightStub(title, steps, expectedResult);
+  }
+
   const imports = groups
     .map((g) => `import { ${g.className} } from './pages/${g.className}';`)
     .join('\n');
@@ -115,6 +121,40 @@ ${interactions}
 });
 `;
 };
+
+const renderPlaywrightStub = (
+  title: string,
+  steps: string[],
+  expectedResult: string,
+): string => {
+  const stepLines = steps
+    .map(
+      (s, i) =>
+        `  // Step ${i + 1}: ${s}\n  // TODO: await page.locator('REPLACE_WITH_SELECTOR').click(); // ${shortLabel(s)}`,
+    )
+    .join('\n\n');
+  return `import { test, expect } from '@playwright/test';
+
+/**
+ * STUB SCRIPT \u2014 No crawled page elements were found for this feature.
+ *  1. Run the Page Crawler for this feature to capture locators.
+ *  2. Re-generate this script to replace the TODOs with real Page Object calls.
+ *
+ * Title: ${title}
+ * Expected: ${expectedResult}
+ */
+test('${title}', async ({ page }) => {
+  await page.goto('REPLACE_WITH_BASE_URL');
+
+${stepLines}
+
+  // TODO: assert: ${expectedResult}
+});
+`;
+};
+
+const shortLabel = (s: string): string =>
+  s.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
 
 const playwrightInteraction = (u: ElementUsage, idx: number): string => {
   const ref = `${pageVarName(u.page)}.${safeIdent(u.element.elementName)}`;

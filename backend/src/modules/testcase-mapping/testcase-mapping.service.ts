@@ -8,6 +8,14 @@ import { PaginatedResult } from '../../common/interfaces/api-response.interface'
 import { paginate } from '../../common/utils/search-query.util';
 import { assertValidObjectId } from '../../common/utils/object-id.util';
 import { PageElementRepository } from '../page-element/page-element.repository';
+import {
+  PageGroup,
+  PomFile,
+  generatePomFiles,
+  groupElementsByPage,
+} from '../page-element/pom-generator.util';
+import { PageElementRecord } from '../page-element/page-element.interface';
+import { PageElementDocument } from '../../common/schemas';
 import { TestCaseRepository } from '../test-case/test-case.repository';
 import { LlmService } from '../llm/llm.service';
 import { CreateMappingDto } from './dto/create-mapping.dto';
@@ -16,7 +24,7 @@ import { PushToGitDto } from './dto/push-to-git.dto';
 import { SearchMappingDto } from './dto/search-mapping.dto';
 import { UpdateMappingDto } from './dto/update-mapping.dto';
 import { generateScript } from './script-generator.util';
-import { MappingRecord } from './testcase-mapping.interface';
+import { MappingRecord, ScriptType } from './testcase-mapping.interface';
 import { MappingRepository } from './testcase-mapping.repository';
 
 export interface StepSuggestion {
@@ -36,6 +44,30 @@ export interface MappingSuggestion {
   steps: StepSuggestion[];
   /** Convenience: deduplicated, in-order list of suggested element ids. */
   elementIds: string[];
+}
+
+export interface BulkSpecFile {
+  mappingId: string;
+  testCaseId: string;
+  testCaseTitle: string;
+  fileName: string;
+  content: string;
+  /** True when no crawled elements were available, so script is a stub. */
+  isStub: boolean;
+  /** Number of crawled page elements wired into this spec. */
+  elementsUsed: number;
+}
+
+export interface BulkGenerateResult {
+  featureId: string;
+  scriptType: ScriptType;
+  pomFiles: PomFile[];
+  specFiles: BulkSpecFile[];
+  /** Number of test cases that produced a spec (stub or real). */
+  processed: number;
+  /** Number of test cases that errored out and were skipped. */
+  skipped: number;
+  warnings: string[];
 }
 
 @Injectable()
@@ -395,6 +427,221 @@ export class MappingService {
         reason: best ? 'keyword overlap' : undefined,
       };
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // BULK: Generate Playwright bundle (POMs + Specs) for one feature
+  // -------------------------------------------------------------------------
+
+  /**
+   * For every APPROVED + automationFeasible test case under a feature:
+   *   1. Resolve the page elements that match its steps (LLM with heuristic
+   *      fallback, same as the per-case `suggest` flow).
+   *   2. Upsert a TestCaseMapping with the suggested element ids.
+   *   3. Generate the Playwright spec via the existing script generator.
+   *
+   * Also returns the per-page Page-Object files derived from the feature's
+   * crawled elements (`generatePomFiles`). When the feature has zero crawled
+   * elements, the spec falls back to a clearly-marked STUB.
+   */
+  async bulkGenerateForFeature(
+    featureId: string,
+    userId: string,
+    scriptType: ScriptType = 'PLAYWRIGHT',
+  ): Promise<BulkGenerateResult> {
+    assertValidObjectId(featureId, 'featureId');
+
+    const tcDocs =
+      await this.testCaseRepository.findAutomationFeasibleByFeature(featureId);
+
+    if (tcDocs.length === 0) {
+      return {
+        featureId,
+        scriptType,
+        pomFiles: [],
+        specFiles: [],
+        processed: 0,
+        skipped: 0,
+        warnings: [
+          'No automation-feasible APPROVED test cases found for this feature.',
+        ],
+      };
+    }
+
+    const elementDocs =
+      await this.pageElementRepository.findByFeatureId(featureId);
+    const elementRecords = elementDocs.map((d) => this.toPageElementRecord(d));
+    const groups = groupElementsByPage(elementRecords);
+    const pomFiles =
+      groups.length > 0 ? generatePomFiles('PLAYWRIGHT', groups) : [];
+
+    const warnings: string[] = [];
+    if (elementDocs.length === 0) {
+      warnings.push(
+        'No page elements have been crawled for this feature yet. Specs were generated as STUBs with TODO selectors. Run the Page Crawler and regenerate to wire real locators.',
+      );
+    }
+
+    const specFiles: BulkSpecFile[] = [];
+    let processed = 0;
+    let skipped = 0;
+
+    for (const tcDoc of tcDocs) {
+      const tcObj = tcDoc.toObject() as {
+        _id: { toString(): string } | string;
+        featureId: string;
+        testSuiteId: string;
+        title: string;
+      };
+      const testCaseId =
+        typeof tcObj._id === 'string' ? tcObj._id : tcObj._id.toString();
+
+      try {
+        let elementIds: string[] = [];
+        if (elementDocs.length > 0) {
+          const suggestion = await this.suggestForTestCase(
+            testCaseId,
+            userId,
+          ).catch(() => null);
+          elementIds = suggestion?.elementIds ?? [];
+        }
+
+        // Upsert the mapping (so the user can later edit / push individually
+        // from the per-case mapping page).
+        let mappingDoc = await this.mappingRepository.findByTestCaseId(
+          testCaseId,
+        );
+        if (mappingDoc) {
+          mappingDoc = await this.mappingRepository.update(
+            mappingDoc._id.toString(),
+            {
+              elementIds,
+              scriptType,
+              gitPushStatus: 'NOT_PUSHED',
+            },
+          );
+        } else {
+          mappingDoc = await this.mappingRepository.create({
+            featureId: tcObj.featureId,
+            testSuiteId: tcObj.testSuiteId,
+            testCaseId,
+            elementIds,
+            scriptType,
+            gitPushStatus: 'NOT_PUSHED',
+            createdBy: userId,
+          });
+        }
+
+        // Generate the spec file content. If `elementIds` is empty, the
+        // generator emits a stub script with TODO placeholders.
+        const matchedElements = await this.pageElementRepository.findByIds(
+          elementIds,
+        );
+        const scriptContent = generateScript(
+          scriptType,
+          tcDoc,
+          matchedElements,
+        );
+
+        await this.mappingRepository.update(mappingDoc._id.toString(), {
+          generatedScript: scriptContent,
+          scriptType,
+          gitPushStatus: 'NOT_PUSHED',
+        });
+
+        specFiles.push({
+          mappingId: mappingDoc._id.toString(),
+          testCaseId,
+          testCaseTitle: tcObj.title,
+          fileName: `${this.toSpecFileName(tcObj.title)}.spec.ts`,
+          content: scriptContent,
+          isStub: elementIds.length === 0,
+          elementsUsed: elementIds.length,
+        });
+        processed += 1;
+      } catch (e) {
+        skipped += 1;
+        warnings.push(
+          `Failed to generate script for "${tcObj.title}": ${
+            e instanceof Error ? e.message : 'unknown error'
+          }`,
+        );
+      }
+    }
+
+    return {
+      featureId,
+      scriptType,
+      pomFiles,
+      specFiles,
+      processed,
+      skipped,
+      warnings,
+    };
+  }
+
+  /**
+   * Bulk push: marks every supplied mapping as PUSHED. Mirrors the per-case
+   * `pushToGit` semantics (the actual git operation is delegated to the
+   * integrations layer; this endpoint only updates state). Returns a count
+   * of mappings updated.
+   */
+  async bulkPushToGit(
+    mappingIds: string[],
+  ): Promise<{ pushed: number; skipped: number }> {
+    if (!Array.isArray(mappingIds) || mappingIds.length === 0) {
+      throw new BadRequestException('mappingIds must be a non-empty array.');
+    }
+    let pushed = 0;
+    let skipped = 0;
+    for (const id of mappingIds) {
+      try {
+        assertValidObjectId(id);
+        const m = await this.mappingRepository.findById(id);
+        if (!m) {
+          skipped += 1;
+          continue;
+        }
+        const obj = m.toObject() as { generatedScript?: string | null };
+        if (!obj.generatedScript) {
+          skipped += 1;
+          continue;
+        }
+        await this.mappingRepository.update(id, { gitPushStatus: 'PUSHED' });
+        pushed += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+    return { pushed, skipped };
+  }
+
+  private toPageElementRecord(doc: PageElementDocument): PageElementRecord {
+    const obj = doc.toObject() as Record<string, unknown>;
+    return {
+      _id: doc._id.toString(),
+      featureId: obj['featureId'] as string,
+      testSuiteId: (obj['testSuiteId'] as string) ?? undefined,
+      pageUrl: obj['pageUrl'] as string,
+      pageName: (obj['pageName'] as string) ?? undefined,
+      elementName: obj['elementName'] as string,
+      elementType: obj['elementType'] as PageElementRecord['elementType'],
+      selector: obj['selector'] as string,
+      selectorType: obj['selectorType'] as PageElementRecord['selectorType'],
+      isStable: (obj['isStable'] as boolean) ?? true,
+      createdBy: obj['createdBy'] as string,
+      createdAt: obj['createdAt'] as number,
+      updatedAt: obj['updatedAt'] as number,
+    };
+  }
+
+  private toSpecFileName(title: string): string {
+    const base = (title ?? 'test-case')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    return base || 'test-case';
   }
 
   async markPushFailed(id: string): Promise<MappingRecord> {

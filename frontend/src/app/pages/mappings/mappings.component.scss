@@ -2,6 +2,157 @@
   display: block;
 }
 
+/* ========== Bulk Playwright bundle section ========== */
+.bundle-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+  box-shadow: 0 2px 6px rgba(22, 119, 255, 0.06);
+}
+
+.bundle-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.bundle-title {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex: 1 1 360px;
+  min-width: 0;
+
+  .bundle-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f0f7ff;
+    color: #1677ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .t {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .s {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+    margin-top: 4px;
+    line-height: 1.5;
+    max-width: 720px;
+  }
+}
+
+.bundle-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bundle-feature {
+  min-width: 240px;
+}
+
+.bundle-stats {
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.bundle-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bundle-warn {
+  margin-bottom: 8px;
+}
+
+.bundle-tabs {
+  margin-top: 8px;
+}
+
+.file-list {
+  background: transparent;
+
+  ::ng-deep .ant-collapse-item {
+    border-bottom: 1px solid #f0f0f0;
+  }
+}
+
+.file-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  .file-icon {
+    color: #1677ff;
+  }
+
+  .file-name {
+    font-family: 'Fira Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: #1f2d3d;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .file-meta {
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.file-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.file-code {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-family: 'Fira Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 420px;
+  margin: 0;
+}
+
+.section-divider {
+  ::ng-deep .ant-divider-inner-text {
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
 .elements-card {
   margin-top: 16px;
 }

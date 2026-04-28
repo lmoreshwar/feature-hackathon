@@ -18,46 +18,245 @@
       @if (errorMessage(); as msg) {
         <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
       }
-      <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="trigger()">
-        <nz-form-item>
-          <nz-form-label nzRequired>Feature</nz-form-label>
-          <nz-form-control nzErrorTip="Feature is required">
-            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
-              @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
-            </nz-select>
-          </nz-form-control>
-        </nz-form-item>
 
-        <nz-form-item>
-          <nz-form-label>Test suite (optional)</nz-form-label>
-          <nz-form-control>
-            <nz-select formControlName="testSuiteId" nzPlaceHolder="All suites" nzAllowClear
-              [nzDisabled]="!form.controls.featureId.value">
-              @for (s of suites(); track s._id) { <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option> }
-            </nz-select>
-          </nz-form-control>
-        </nz-form-item>
+      <nz-tabs>
+        <nz-tab nzTitle="Run on BrowserStack">
+          @if (reposError(); as msg) {
+            <nz-alert nzType="warning" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
+          }
 
-        <nz-form-item>
-          <nz-form-label nzRequired>Build name</nz-form-label>
-          <nz-form-control nzErrorTip="Build name is required">
-            <input nz-input formControlName="buildName" placeholder="release-2026.04.28" />
-          </nz-form-control>
-        </nz-form-item>
+          <form nz-form nzLayout="vertical" [formGroup]="workflowForm" (ngSubmit)="triggerWorkflow()">
+            <!-- 1) Feature -->
+            <nz-form-item>
+              <nz-form-label nzRequired>Feature</nz-form-label>
+              <nz-form-control nzErrorTip="Feature is required">
+                <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+                  @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
 
-        <nz-form-item>
-          <nz-form-label nzRequired>Provider</nz-form-label>
-          <nz-form-control>
-            <nz-select formControlName="provider">
-              @for (p of providers; track p) { <nz-option [nzValue]="p" [nzLabel]="p"></nz-option> }
-            </nz-select>
-          </nz-form-control>
-        </nz-form-item>
+            <!-- 2) Repo -->
+            <nz-form-item>
+              <nz-form-label nzRequired>Repository</nz-form-label>
+              <nz-form-control nzErrorTip="Pick a repo">
+                <div class="branch-row">
+                  <nz-select
+                    class="branch-select"
+                    formControlName="repo"
+                    nzPlaceHolder="Pick a GitHub repo"
+                    nzShowSearch
+                    [nzLoading]="reposLoading()"
+                  >
+                    @for (r of repos(); track r.fullName) {
+                      <nz-option [nzValue]="r.fullName" [nzLabel]="r.fullName"></nz-option>
+                    }
+                  </nz-select>
+                  <button
+                    type="button"
+                    nz-button
+                    nzType="default"
+                    nz-tooltip
+                    nzTooltipTitle="Reload repos from your GitHub PAT"
+                    [nzLoading]="reposLoading()"
+                    (click)="loadRepos()"
+                  >
+                    <span nz-icon nzType="reload"></span>
+                  </button>
+                </div>
+                @if (!reposLoading() && repos().length === 0) {
+                  <div class="hint-text">
+                    No repos accessible. Save a GitHub PAT under
+                    <strong>Settings → Integrations → Git</strong> with
+                    <code>repo</code> + <code>workflow</code> scopes.
+                  </div>
+                }
+              </nz-form-control>
+            </nz-form-item>
 
-        <button nz-button nzType="primary" nzBlock type="submit" [nzLoading]="triggering()" [disabled]="form.invalid">
-          <span nz-icon nzType="play-circle"></span> Trigger build
-        </button>
-      </form>
+            <!-- 3) Branch -->
+            <nz-form-item>
+              <nz-form-label nzRequired>Branch</nz-form-label>
+              <nz-form-control nzErrorTip="Pick a branch">
+                <div class="branch-row">
+                  <nz-select
+                    class="branch-select"
+                    formControlName="branch"
+                    nzPlaceHolder="Pick a branch"
+                    nzShowSearch
+                    [nzLoading]="gitBranchesLoading()"
+                    [nzDisabled]="!workflowForm.controls.repo.value"
+                  >
+                    @for (b of gitBranches(); track b) {
+                      <nz-option [nzValue]="b" [nzLabel]="b"></nz-option>
+                    }
+                  </nz-select>
+                  <button
+                    type="button"
+                    nz-button
+                    nzType="default"
+                    nz-tooltip
+                    nzTooltipTitle="Reload branches"
+                    [nzLoading]="gitBranchesLoading()"
+                    [disabled]="!workflowForm.controls.repo.value"
+                    (click)="loadGitBranches(workflowForm.controls.repo.value)"
+                  >
+                    <span nz-icon nzType="reload"></span>
+                  </button>
+                </div>
+              </nz-form-control>
+            </nz-form-item>
+
+            <!-- 4) Workflow yml (optional) -->
+            <nz-form-item>
+              <nz-form-label>
+                Workflow file (.yml) <span style="color: #8c8c8c; font-weight: normal">— optional</span>
+                <span nz-icon nzType="info-circle" nz-tooltip
+                  nzTooltipTitle="Pick a workflow under .github/workflows/ to dispatch via GitHub Actions (BrowserStack creds come from your repo's Actions secrets). Leave empty to clone the branch and run npx playwright test on this server."
+                  style="margin-left: 4px; opacity: 0.6"></span>
+              </nz-form-label>
+              <nz-form-control>
+                <div class="branch-row">
+                  <nz-select
+                    class="branch-select"
+                    formControlName="workflowFile"
+                    nzPlaceHolder="(none) – clone & run npx playwright test"
+                    nzShowSearch
+                    nzAllowClear
+                    [nzLoading]="workflowsLoading()"
+                    [nzDisabled]="!workflowForm.controls.repo.value"
+                  >
+                    @for (w of workflows(); track w.id) {
+                      <nz-option [nzValue]="w.path" [nzLabel]="workflowShortName(w.path) + ' — ' + w.name"></nz-option>
+                    }
+                  </nz-select>
+                  <button
+                    type="button"
+                    nz-button
+                    nzType="default"
+                    nz-tooltip
+                    nzTooltipTitle="Reload workflows"
+                    [nzLoading]="workflowsLoading()"
+                    [disabled]="!workflowForm.controls.repo.value"
+                    (click)="loadWorkflows(workflowForm.controls.repo.value)"
+                  >
+                    <span nz-icon nzType="reload"></span>
+                  </button>
+                </div>
+                @if (workflowForm.controls.repo.value && !workflowsLoading() && workflows().length === 0) {
+                  <div class="hint-text">
+                    No <code>workflow_dispatch</code>-enabled workflows in this repo —
+                    we'll fall back to <code>npx playwright test</code> on the host.
+                  </div>
+                }
+              </nz-form-control>
+            </nz-form-item>
+
+            <!-- 5) Build name -->
+            <nz-form-item>
+              <nz-form-label nzRequired>Build name</nz-form-label>
+              <nz-form-control nzErrorTip="Build name is required (min 2 chars)">
+                <input nz-input formControlName="buildName" placeholder="bs-smoke-2026-04-28" />
+              </nz-form-control>
+            </nz-form-item>
+
+            <button
+              nz-button
+              nzType="primary"
+              nzBlock
+              type="submit"
+              [nzLoading]="workflowTriggering()"
+            >
+              <span nz-icon nzType="thunderbolt"></span>
+              {{ workflowForm.controls.workflowFile.value ? 'Trigger GitHub workflow' : 'Clone & run on BrowserStack' }}
+            </button>
+          </form>
+
+          @if (lastWorkflowExecution(); as last) {
+            <div class="git-result-card">
+              <div class="git-result-hdr">
+                <strong>{{ last.buildName }}</strong>
+                <app-status-tag [status]="last.status"></app-status-tag>
+              </div>
+              <div class="git-result-stats four">
+                <nz-statistic
+                  [nzValue]="last.totalTests"
+                  nzTitle="Total"
+                ></nz-statistic>
+                <nz-statistic
+                  [nzValue]="last.passedTests"
+                  nzTitle="Passed"
+                  [nzValueStyle]="{ color: '#52c41a' }"
+                ></nz-statistic>
+                <nz-statistic
+                  [nzValue]="last.failedTests"
+                  nzTitle="Failed"
+                  [nzValueStyle]="{ color: '#ff4d4f' }"
+                ></nz-statistic>
+                <nz-statistic
+                  [nzValue]="last.skippedTests || 0"
+                  nzTitle="Skipped"
+                  [nzValueStyle]="{ color: '#faad14' }"
+                ></nz-statistic>
+              </div>
+              @if (isHttpUrl(last.reportUrl)) {
+                <a nz-button nzType="link" nzBlock [href]="last.reportUrl" target="_blank" rel="noopener" style="margin-top: 8px">
+                  <span nz-icon nzType="link"></span> Open run on GitHub Actions
+                </a>
+              }
+              @if (last.logsUrl && !isHttpUrl(last.logsUrl)) {
+                <div class="git-result-log" nz-tooltip [nzTooltipTitle]="last.logsUrl">
+                  <span nz-icon nzType="info-circle"></span>
+                  <span class="log-text">{{ last.logsUrl }}</span>
+                </div>
+              }
+            </div>
+          }
+        </nz-tab>
+
+        <nz-tab nzTitle="In-app replay">
+          <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="trigger()">
+            <nz-form-item>
+              <nz-form-label nzRequired>Feature</nz-form-label>
+              <nz-form-control nzErrorTip="Feature is required">
+                <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+                  @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+              <nz-form-label>Test suite (optional)</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="testSuiteId" nzPlaceHolder="All suites" nzAllowClear
+                  [nzDisabled]="!form.controls.featureId.value">
+                  @for (s of suites(); track s._id) { <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option> }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+              <nz-form-label nzRequired>Build name</nz-form-label>
+              <nz-form-control nzErrorTip="Build name is required">
+                <input nz-input formControlName="buildName" placeholder="release-2026.04.28" />
+              </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+              <nz-form-label nzRequired>Provider</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="provider">
+                  @for (p of providers; track p) { <nz-option [nzValue]="p" [nzLabel]="p"></nz-option> }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+
+            <button nz-button nzType="primary" nzBlock type="submit" [nzLoading]="triggering()" [disabled]="form.invalid">
+              <span nz-icon nzType="play-circle"></span> Trigger build
+            </button>
+          </form>
+        </nz-tab>
+      </nz-tabs>
     </nz-card>
   </div>
 
@@ -90,7 +289,7 @@
             <th nzWidth="160px">Feature</th>
             <th nzWidth="120px">Provider</th>
             <th nzWidth="120px">Status</th>
-            <th nzWidth="160px">Tests (P/F/T)</th>
+            <th nzWidth="200px" nz-tooltip nzTooltipTitle="Total · Passed · Failed · Skipped">Tests (T / P / F / S)</th>
             <th nzWidth="160px">Triggered</th>
             <th nzWidth="180px" nzAlign="right">Actions</th>
           </tr>
@@ -102,7 +301,12 @@
               <td>{{ featureName(e.featureId) }}</td>
               <td><app-status-tag [status]="e.provider"></app-status-tag></td>
               <td><app-status-tag [status]="e.status"></app-status-tag></td>
-              <td>{{ e.passedTests }} / {{ e.failedTests }} / {{ e.totalTests }}</td>
+              <td>
+                <strong>{{ e.totalTests }}</strong>
+                <span style="color: #52c41a"> · {{ e.passedTests }}</span>
+                <span style="color: #ff4d4f"> · {{ e.failedTests }}</span>
+                <span style="color: #faad14"> · {{ e.skippedTests || 0 }}</span>
+              </td>
               <td>{{ e.createdAt | epoch: 'short' }}</td>
               <td nzAlign="right">
                 @if (isHttpUrl(e.reportUrl)) {
