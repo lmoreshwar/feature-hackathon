@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { TestCaseDocument } from '../../common/schemas';
 import { PaginatedResult } from '../../common/interfaces/api-response.interface';
 import { paginate } from '../../common/utils/search-query.util';
@@ -6,6 +11,7 @@ import { assertValidObjectId } from '../../common/utils/object-id.util';
 import { FeatureRepository } from '../feature/feature.repository';
 import { JiraFetcherService } from '../integration/jira-fetcher.service';
 import { TestSuiteRepository } from '../test-suite/test-suite.repository';
+import { reevaluateAutomationFeasible } from './automation-feasibility.util';
 import { BulkCreateTestCaseDto } from './dto/bulk-create-test-case.dto';
 import { CreateTestCaseDto } from './dto/create-test-case.dto';
 import {
@@ -21,14 +27,97 @@ import {
   computeCoverage,
 } from './coverage.util';
 
+export interface RecomputeAutomationResult {
+  scanned: number;
+  changed: number;
+  changes: Array<{
+    id: string;
+    title: string;
+    from: boolean;
+    to: boolean;
+    reason: string;
+  }>;
+}
+
 @Injectable()
 export class TestCaseService {
+  private readonly logger = new Logger(TestCaseService.name);
+
   constructor(
     private readonly testCaseRepository: TestCaseRepository,
     private readonly testSuiteRepository: TestSuiteRepository,
     private readonly featureRepository: FeatureRepository,
     private readonly jiraFetcher: JiraFetcherService,
   ) {}
+
+  /**
+   * Re-runs the automation-feasibility heuristic against existing test
+   * cases (optionally scoped by feature/suite) and persists any changes.
+   * Useful for retro-fixing rows generated under an older, more
+   * conservative prompt that marked too many things as manual.
+   */
+  async recomputeAutomation(scope: {
+    featureId?: string;
+    testSuiteId?: string;
+  }): Promise<RecomputeAutomationResult> {
+    const filters: Record<string, unknown> = {};
+    if (scope.featureId) {
+      assertValidObjectId(scope.featureId, 'featureId');
+      filters['featureId'] = scope.featureId;
+    }
+    if (scope.testSuiteId) {
+      assertValidObjectId(scope.testSuiteId, 'testSuiteId');
+      filters['testSuiteId'] = scope.testSuiteId;
+    }
+
+    const { items } = await this.testCaseRepository.search({
+      pageIndex: 1,
+      pageSize: 1000,
+      filters,
+    });
+
+    const changes: RecomputeAutomationResult['changes'] = [];
+    for (const doc of items) {
+      const o = doc.toObject() as Record<string, unknown>;
+      const current = Boolean(o['automationFeasible']);
+      const decision = reevaluateAutomationFeasible({
+        description: (o['description'] as string) ?? undefined,
+        expectedResult: (o['expectedResult'] as string) ?? '',
+        steps: (o['steps'] as string[]) ?? [],
+        tags: (o['tags'] as string[]) ?? [],
+        currentValue: current,
+      });
+      if (decision.value === current) continue;
+
+      const tags = this.normalizeTags(
+        (o['tags'] as string[]) ?? [],
+        decision.value,
+      );
+      await this.testCaseRepository.update(doc._id.toString(), {
+        automationFeasible: decision.value,
+        tags,
+      });
+      changes.push({
+        id: doc._id.toString(),
+        title: (o['title'] as string) ?? '',
+        from: current,
+        to: decision.value,
+        reason: decision.reason,
+      });
+    }
+
+    if (changes.length > 0) {
+      this.logger.log(
+        `Recomputed automationFeasible on ${items.length} test case(s); ${changes.length} updated.`,
+      );
+    }
+
+    return {
+      scanned: items.length,
+      changed: changes.length,
+      changes,
+    };
+  }
 
   async create(
     dto: CreateTestCaseDto,
