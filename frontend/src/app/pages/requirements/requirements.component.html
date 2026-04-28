@@ -41,9 +41,120 @@
         <nz-form-item>
           <nz-form-label>Jira ID</nz-form-label>
           <nz-form-control>
-            <input nz-input formControlName="jiraId" placeholder="QA-123" />
+            <nz-input-group nzCompact>
+              <input
+                nz-input
+                formControlName="jiraId"
+                placeholder="QA-123"
+                style="width: calc(100% - 110px)"
+                (keydown.enter)="$event.preventDefault(); fetchJira()"
+              />
+              <button
+                nz-button
+                nzType="default"
+                style="width: 110px"
+                [nzLoading]="jiraLoading()"
+                [disabled]="!form.controls.jiraId.value"
+                type="button"
+                (click)="fetchJira()"
+                nz-tooltip
+                nzTooltipTitle="Fetch this ticket plus its parent / sub-tasks / linked issues from Jira"
+              >
+                <span nz-icon nzType="cloud-download"></span> Fetch
+              </button>
+            </nz-input-group>
           </nz-form-control>
         </nz-form-item>
+
+        @if (jiraError(); as err) {
+          <nz-alert
+            nzType="error"
+            [nzMessage]="err"
+            nzShowIcon
+            class="alert"
+          ></nz-alert>
+        }
+
+        @if (jiraTicket(); as t) {
+          <div class="jira-preview">
+            <div class="jira-primary">
+              <div class="jira-head">
+                <a [href]="t.primary.url" target="_blank" rel="noopener">
+                  <strong>{{ t.primary.key }}</strong>
+                </a>
+                <nz-tag nzColor="green">{{ t.primary.relation }}</nz-tag>
+                @if (t.primary.issueType) {
+                  <nz-tag>{{ t.primary.issueType }}</nz-tag>
+                }
+                @if (t.primary.status) {
+                  <nz-tag nzColor="blue">{{ t.primary.status }}</nz-tag>
+                }
+                @if (t.primary.priority) {
+                  <nz-tag nzColor="orange">{{ t.primary.priority }}</nz-tag>
+                }
+                <button
+                  nz-button
+                  nzType="link"
+                  nzSize="small"
+                  type="button"
+                  (click)="useJiraAsRequirementText(null)"
+                >
+                  Use as text
+                </button>
+                <button
+                  nz-button
+                  nzType="text"
+                  nzSize="small"
+                  type="button"
+                  (click)="clearJiraPreview()"
+                >
+                  <span nz-icon nzType="close"></span>
+                </button>
+              </div>
+              <div class="jira-summary">{{ t.primary.summary }}</div>
+              @if (t.primary.assignee) {
+                <div class="jira-meta">Assignee: {{ t.primary.assignee }}</div>
+              }
+              @if (t.primary.description) {
+                <div class="jira-desc">{{ t.primary.description }}</div>
+              }
+            </div>
+
+            @if (t.related.length) {
+              <div class="jira-related-title">
+                Related tickets ({{ t.related.length }})
+              </div>
+              <ul class="jira-related">
+                @for (r of t.related; track r.key + '|' + r.relation + '|' + (r.linkType || '')) {
+                  <li>
+                    <div class="jira-head">
+                      <a [href]="r.url" target="_blank" rel="noopener">
+                        <strong>{{ r.key }}</strong>
+                      </a>
+                      <nz-tag [nzColor]="relationColor(r.relation)">
+                        {{ r.relation }}{{ r.linkType ? ' · ' + r.linkType : '' }}
+                      </nz-tag>
+                      @if (r.issueType) { <nz-tag>{{ r.issueType }}</nz-tag> }
+                      @if (r.status) {
+                        <nz-tag nzColor="blue">{{ r.status }}</nz-tag>
+                      }
+                      <button
+                        nz-button
+                        nzType="link"
+                        nzSize="small"
+                        type="button"
+                        (click)="useJiraAsRequirementText(r)"
+                      >
+                        Use
+                      </button>
+                    </div>
+                    <div class="jira-summary jira-summary--sm">{{ r.summary }}</div>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
 
         <nz-form-item>
           <nz-form-label>Confluence URL</nz-form-label>

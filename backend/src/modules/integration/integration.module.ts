@@ -9,6 +9,7 @@ import { IntegrationController } from './integration.controller';
 import { IntegrationRepository } from './integration.repository';
 import { IntegrationService } from './integration.service';
 import { IntegrationTesterService } from './integration-tester.service';
+import { JiraFetcherService } from './jira-fetcher.service';
 
 @Module({
   imports: [
@@ -18,7 +19,17 @@ import { IntegrationTesterService } from './integration-tester.service';
     AuthModule,
   ],
   controllers: [IntegrationController],
-  providers: [IntegrationService, IntegrationRepository, IntegrationTesterService],
-  exports: [IntegrationService, IntegrationRepository, IntegrationTesterService],
+  providers: [
+    IntegrationService,
+    IntegrationRepository,
+    IntegrationTesterService,
+    JiraFetcherService,
+  ],
+  exports: [
+    IntegrationService,
+    IntegrationRepository,
+    IntegrationTesterService,
+    JiraFetcherService,
+  ],
 })
 export class IntegrationModule {}

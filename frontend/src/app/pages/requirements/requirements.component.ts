@@ -27,6 +27,11 @@ import {
   RequirementStatus,
 } from '../../core/models';
 import { FeaturesService } from '../../core/services/features.service';
+import {
+  IntegrationsService,
+  JiraTicketResult,
+  JiraTicketSummary,
+} from '../../core/services/integrations.service';
 import { RequirementsService } from '../../core/services/requirements.service';
 import { TestSuitesService } from '../../core/services/test-suites.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -74,6 +79,7 @@ export class RequirementsComponent implements OnInit {
   private readonly requirementsService = inject(RequirementsService);
   private readonly featuresService = inject(FeaturesService);
   private readonly suitesService = inject(TestSuitesService);
+  private readonly integrationsService = inject(IntegrationsService);
   private readonly message = inject(NzMessageService);
 
   protected readonly statuses = REQUIREMENT_STATUSES;
@@ -91,6 +97,10 @@ export class RequirementsComponent implements OnInit {
 
   protected readonly statusFilter = new FormControl<RequirementStatus | null>(null);
   protected readonly featureFilter = new FormControl<string | null>(null);
+
+  protected readonly jiraLoading = signal(false);
+  protected readonly jiraError = signal<string | null>(null);
+  protected readonly jiraTicket = signal<JiraTicketResult | null>(null);
 
   protected readonly form = this.fb.nonNullable.group<RequirementForm>({
     featureId: this.fb.nonNullable.control('', [Validators.required]),
@@ -117,6 +127,12 @@ export class RequirementsComponent implements OnInit {
         });
       } else {
         this.suites.set([]);
+      }
+    });
+    this.form.controls.jiraId.valueChanges.pipe(distinctUntilChanged()).subscribe((v) => {
+      const t = this.jiraTicket();
+      if (t && (v || '').trim().toUpperCase() !== t.primary.key) {
+        this.clearJiraPreview();
       }
     });
 
@@ -172,6 +188,7 @@ export class RequirementsComponent implements OnInit {
               confluenceUrl: '',
               requirementText: '',
             });
+            this.clearJiraPreview();
             this.fetch();
           }
         },
@@ -215,6 +232,65 @@ export class RequirementsComponent implements OnInit {
     if (r.confluenceUrl) return `Confluence: ${r.confluenceUrl}`;
     if (r.requirementText) return r.requirementText;
     return '—';
+  }
+
+  protected fetchJira(): void {
+    if (this.jiraLoading()) return;
+    const key = (this.form.controls.jiraId.value || '').trim();
+    if (!key) {
+      this.jiraError.set('Enter a Jira ticket key first (e.g. PROJ-123).');
+      return;
+    }
+
+    this.jiraError.set(null);
+    this.jiraLoading.set(true);
+    this.integrationsService
+      .fetchJiraIssue(key)
+      .pipe(finalize(() => this.jiraLoading.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.jiraTicket.set(result);
+          this.message.success(
+            `Loaded ${result.primary.key} (${result.related.length} related)`,
+          );
+        },
+        error: (e: unknown) => {
+          this.jiraTicket.set(null);
+          this.jiraError.set(toErrorMessage(e));
+        },
+      });
+  }
+
+  protected clearJiraPreview(): void {
+    this.jiraTicket.set(null);
+    this.jiraError.set(null);
+  }
+
+  protected useJiraAsRequirementText(t: JiraTicketSummary | null): void {
+    const ticket = this.jiraTicket();
+    if (!ticket) return;
+    const target = t ?? ticket.primary;
+    const desc = (ticket.primary.description ?? '').trim();
+    const lines = [
+      `[${target.key}] ${target.summary}`,
+      ...(target === ticket.primary && desc ? ['', desc] : []),
+    ];
+    this.form.controls.requirementText.setValue(lines.join('\n'));
+    this.form.controls.requirementText.markAsDirty();
+    this.message.success('Copied Jira summary into requirement text');
+  }
+
+  protected relationColor(relation: JiraTicketSummary['relation']): string {
+    switch (relation) {
+      case 'PARENT':
+        return 'purple';
+      case 'SUBTASK':
+        return 'blue';
+      case 'LINKED':
+        return 'gold';
+      default:
+        return 'green';
+    }
   }
 
   private loadFeatures(): void {

@@ -23,6 +23,27 @@ export interface ConnectionTestResult {
   details?: Record<string, unknown>;
 }
 
+export type JiraRelation = 'PRIMARY' | 'PARENT' | 'SUBTASK' | 'LINKED';
+
+export interface JiraTicketSummary {
+  key: string;
+  summary: string;
+  status?: string;
+  statusCategory?: string;
+  issueType?: string;
+  priority?: string;
+  assignee?: string;
+  reporter?: string;
+  url: string;
+  relation: JiraRelation;
+  linkType?: string;
+}
+
+export interface JiraTicketResult {
+  primary: JiraTicketSummary & { description?: string; labels?: string[] };
+  related: JiraTicketSummary[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class IntegrationsService {
   private readonly api = inject(ApiService);
@@ -69,6 +90,21 @@ export class IntegrationsService {
               message: res.message ?? 'No response from server',
             },
         ),
+      );
+  }
+
+  fetchJiraIssue(key: string): Observable<JiraTicketResult> {
+    return this.api
+      .get<ApiEnvelope<JiraTicketResult>>(
+        `${this.base}/jira/issues/${encodeURIComponent(key.trim())}`,
+      )
+      .pipe(
+        map((res) => {
+          if (!res.data) {
+            throw new Error(res.message ?? 'Empty response from Jira');
+          }
+          return res.data;
+        }),
       );
   }
 }
