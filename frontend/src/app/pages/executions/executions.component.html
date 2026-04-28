@@ -1,0 +1,133 @@
+<app-page-header title="Build Execution" subtitle="Trigger a run on BrowserStack or locally and watch the live status.">
+  <button nz-button (click)="refresh()" [nzLoading]="loading()"><span nz-icon nzType="reload"></span> Refresh</button>
+</app-page-header>
+
+<div nz-row [nzGutter]="[16, 16]">
+  <div nz-col [nzXs]="24" [nzLg]="9">
+    <nz-card nzTitle="Trigger a build" [nzBordered]="false">
+      @if (errorMessage(); as msg) {
+        <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
+      }
+      <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="trigger()">
+        <nz-form-item>
+          <nz-form-label nzRequired>Feature</nz-form-label>
+          <nz-form-control nzErrorTip="Feature is required">
+            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+              @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Test suite (optional)</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="testSuiteId" nzPlaceHolder="All suites" nzAllowClear
+              [nzDisabled]="!form.controls.featureId.value">
+              @for (s of suites(); track s._id) { <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Build name</nz-form-label>
+          <nz-form-control nzErrorTip="Build name is required">
+            <input nz-input formControlName="buildName" placeholder="release-2026.04.28" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Provider</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="provider">
+              @for (p of providers; track p) { <nz-option [nzValue]="p" [nzLabel]="p"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <button nz-button nzType="primary" nzBlock type="submit" [nzLoading]="triggering()" [disabled]="form.invalid">
+          <span nz-icon nzType="play-circle"></span> Trigger build
+        </button>
+      </form>
+    </nz-card>
+  </div>
+
+  <div nz-col [nzXs]="24" [nzLg]="15">
+    <nz-card nzTitle="Recent executions" [nzBordered]="false">
+      <div class="toolbar">
+        <nz-select class="filter" nzPlaceHolder="All features" nzAllowClear nzShowSearch [formControl]="featureFilter">
+          @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+        </nz-select>
+        <nz-select class="filter" nzPlaceHolder="All statuses" nzAllowClear [formControl]="statusFilter">
+          @for (s of statuses; track s) { <nz-option [nzValue]="s" [nzLabel]="s"></nz-option> }
+        </nz-select>
+      </div>
+
+      <nz-table
+        nzShowSizeChanger
+        [nzData]="executions()"
+        [nzLoading]="loading()"
+        [nzFrontPagination]="false"
+        [nzTotal]="total()"
+        [nzPageIndex]="pageIndex()"
+        [nzPageSize]="pageSize()"
+        [nzPageSizeOptions]="[10, 20, 50]"
+        (nzQueryParams)="onQueryParamsChange($event)"
+        nzSize="middle"
+      >
+        <thead>
+          <tr>
+            <th>Build</th>
+            <th nzWidth="160px">Feature</th>
+            <th nzWidth="120px">Provider</th>
+            <th nzWidth="120px">Status</th>
+            <th nzWidth="160px">Tests (P/F/T)</th>
+            <th nzWidth="160px">Triggered</th>
+            <th nzWidth="180px" nzAlign="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of executions(); track e._id) {
+            <tr>
+              <td><strong>{{ e.buildName }}</strong></td>
+              <td>{{ featureName(e.featureId) }}</td>
+              <td><app-status-tag [status]="e.provider"></app-status-tag></td>
+              <td><app-status-tag [status]="e.status"></app-status-tag></td>
+              <td>{{ e.passedTests }} / {{ e.failedTests }} / {{ e.totalTests }}</td>
+              <td>{{ e.createdAt | epoch: 'short' }}</td>
+              <td nzAlign="right">
+                @if (e.reportUrl) {
+                  <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Report"
+                    [href]="e.reportUrl" target="_blank" rel="noopener">
+                    <span nz-icon nzType="link"></span>
+                  </a>
+                }
+                @if (e.videoUrl) {
+                  <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Video"
+                    [href]="e.videoUrl" target="_blank" rel="noopener">
+                    <span nz-icon nzType="play-circle"></span>
+                  </a>
+                }
+                @if (e.logsUrl) {
+                  <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Logs"
+                    [href]="e.logsUrl" target="_blank" rel="noopener">
+                    <span nz-icon nzType="file-text"></span>
+                  </a>
+                }
+                <button nz-button nzType="text" nz-tooltip nzTooltipTitle="Cancel"
+                  (click)="cancel(e)" [disabled]="e.status === 'CANCELLED' || e.status === 'PASSED' || e.status === 'FAILED'">
+                  <span nz-icon nzType="pause-circle"></span>
+                </button>
+                <button nz-button nzType="text" nzDanger nz-popconfirm
+                  nzPopconfirmTitle="Delete this execution record?" (nzOnConfirm)="delete(e)">
+                  <span nz-icon nzType="delete"></span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7"><nz-empty nzNotFoundContent="No executions yet"></nz-empty></td></tr>
+          }
+        </tbody>
+      </nz-table>
+    </nz-card>
+  </div>
+</div>

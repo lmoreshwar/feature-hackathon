@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -16,21 +16,22 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs';
 
+import {
+  FEATURE_STATUSES,
+  FeatureStatus,
+  IFeature,
+  PaginatedResult,
+} from '../../core/models';
+import { FeaturesService } from '../../core/services/features.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { StatusTagComponent } from '../../shared/components/status-tag/status-tag.component';
+import { EpochPipe } from '../../shared/pipes/epoch.pipe';
 import { FeatureFormDrawerComponent } from './feature-form-drawer.component';
-import { FEATURE_STATUSES, FeatureRecord, FeatureStatus } from './features.models';
-import { FeaturesService } from './features.service';
-
-const STATUS_COLORS: Record<FeatureStatus, string> = {
-  DRAFT: 'default',
-  ACTIVE: 'green',
-  ARCHIVED: 'gold',
-};
 
 @Component({
   selector: 'app-features',
   standalone: true,
   imports: [
-    DatePipe,
     ReactiveFormsModule,
     NzCardModule,
     NzTableModule,
@@ -43,6 +44,9 @@ const STATUS_COLORS: Record<FeatureStatus, string> = {
     NzSelectModule,
     NzProgressModule,
     NzTooltipModule,
+    EpochPipe,
+    PageHeaderComponent,
+    StatusTagComponent,
     FeatureFormDrawerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,11 +56,11 @@ const STATUS_COLORS: Record<FeatureStatus, string> = {
 export class FeaturesComponent implements OnInit {
   private readonly featuresService = inject(FeaturesService);
   private readonly message = inject(NzMessageService);
+  private readonly router = inject(Router);
 
   protected readonly statuses = FEATURE_STATUSES;
-  protected readonly statusColors = STATUS_COLORS;
 
-  protected readonly features = signal<FeatureRecord[]>([]);
+  protected readonly features = signal<IFeature[]>([]);
   protected readonly loading = signal(false);
   protected readonly total = signal(0);
   protected readonly pageIndex = signal(1);
@@ -97,7 +101,7 @@ export class FeaturesComponent implements OnInit {
     this.drawer?.openCreate();
   }
 
-  protected openEdit(feature: FeatureRecord): void {
+  protected openEdit(feature: IFeature): void {
     this.drawer?.openEdit(feature);
   }
 
@@ -105,7 +109,20 @@ export class FeaturesComponent implements OnInit {
     this.fetch();
   }
 
-  protected delete(feature: FeatureRecord): void {
+  protected openDetails(feature: IFeature): void {
+    void this.router.navigate(['/features', feature._id]);
+  }
+
+  protected archive(feature: IFeature): void {
+    this.featuresService.archive(feature._id).subscribe({
+      next: () => {
+        this.message.success(`Feature "${feature.name}" archived`);
+        this.fetch();
+      },
+    });
+  }
+
+  protected delete(feature: IFeature): void {
     this.featuresService.remove(feature._id).subscribe({
       next: () => {
         this.message.success(`Feature "${feature.name}" deleted`);
@@ -119,33 +136,31 @@ export class FeaturesComponent implements OnInit {
   }
 
   protected coverageColor(value: number | undefined): string {
-    if (value === undefined || value === null) {
-      return '#bfbfbf';
-    }
-    if (value >= 80) {
-      return '#52c41a';
-    }
-    if (value >= 50) {
-      return '#1677ff';
-    }
-    if (value >= 20) {
-      return '#faad14';
-    }
+    if (value === undefined || value === null) return '#bfbfbf';
+    if (value >= 80) return '#52c41a';
+    if (value >= 50) return '#1677ff';
+    if (value >= 20) return '#faad14';
     return '#ff4d4f';
   }
 
   private fetch(): void {
     this.loading.set(true);
+    const filters: Record<string, unknown> = {};
+    if (this.statusControl.value) {
+      filters['status'] = this.statusControl.value;
+    }
+
     this.featuresService
-      .list({
-        page: this.pageIndex(),
-        limit: this.pageSize(),
-        search: this.searchControl.value,
-        status: this.statusControl.value ?? undefined,
+      .search({
+        pageIndex: this.pageIndex(),
+        pageSize: this.pageSize(),
+        search: this.searchControl.value?.trim() || undefined,
+        filters,
+        sort: { createdAt: 'desc' },
       })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (result) => {
+        next: (result: PaginatedResult<IFeature>) => {
           this.features.set(result.items);
           this.total.set(result.total);
         },

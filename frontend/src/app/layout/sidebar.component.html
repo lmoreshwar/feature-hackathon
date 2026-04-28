@@ -1,7 +1,7 @@
 <div class="logo">
-  <span class="logo-mark">HK</span>
+  <span class="logo-mark">Q</span>
   @if (!collapsed) {
-    <span class="logo-text">Hackathon Console</span>
+    <span class="logo-text">Quantum AI</span>
   }
 </div>
 
@@ -13,6 +13,7 @@
       routerLinkActive
       #rla="routerLinkActive"
       [nzSelected]="rla.isActive"
+      [nzMatchRouterExact]="false"
     >
       <a [routerLink]="item.route">
         <span nz-icon [nzType]="item.icon"></span>

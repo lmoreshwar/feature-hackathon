@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+.suites-card,
+.metric-card {
+  margin-top: 16px;
+}
+
+.coverage-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.coverage-caption {
+  margin: 12px 0 0;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+}

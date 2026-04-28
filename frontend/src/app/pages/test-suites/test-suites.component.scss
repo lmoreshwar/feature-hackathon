@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.search {
+  flex: 1 1 280px;
+  max-width: 320px;
+}
+
+.filter {
+  width: 200px;
+}
+
+.desc {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  margin-top: 2px;
+}

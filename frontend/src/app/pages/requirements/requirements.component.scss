@@ -1,0 +1,24 @@
+:host {
+  display: block;
+}
+
+.alert {
+  margin-bottom: 12px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filter {
+  width: 200px;
+}
+
+.src-cell {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 320px;
+}

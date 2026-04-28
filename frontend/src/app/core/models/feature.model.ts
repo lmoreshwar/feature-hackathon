@@ -1,4 +1,4 @@
-import { ApiEnvelope } from '../../core/auth/auth.models';
+import { IBaseCollection } from './common.models';
 
 export type FeatureStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 
@@ -8,8 +8,7 @@ export const FEATURE_STATUSES: readonly FeatureStatus[] = [
   'ARCHIVED',
 ] as const;
 
-export interface FeatureRecord {
-  _id: string;
+export interface IFeature extends IBaseCollection {
   name: string;
   description?: string;
   status: FeatureStatus;
@@ -17,16 +16,6 @@ export interface FeatureRecord {
   totalTestCases?: number;
   coveragePercentage?: number;
   createdBy?: string;
-  createdAt?: number | string;
-  updatedAt?: number | string;
-}
-
-export interface PaginatedFeatures {
-  items: FeatureRecord[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
 }
 
 export interface CreateFeaturePayload {
@@ -41,9 +30,4 @@ export interface UpdateFeaturePayload {
   totalSuites?: number;
   totalTestCases?: number;
   coveragePercentage?: number;
-  createdBy?: string;
 }
-
-export type ListFeaturesResponse = ApiEnvelope<PaginatedFeatures>;
-export type FeatureResponse = ApiEnvelope<FeatureRecord>;
-export type DeleteFeatureResponse = ApiEnvelope<{ id: string } | unknown>;

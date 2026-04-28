@@ -39,40 +39,19 @@
   font-size: 18px;
 }
 
-.stat-delta {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .content-row {
   margin-top: 8px;
 }
 
-.activity-list,
-.status-list {
+.flow-list {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding: 0 0 0 18px;
+  list-style: decimal;
 }
 
-.activity-list li {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-
-  span[nz-icon] {
-    color: #1677ff;
-    font-size: 18px;
-    margin-top: 2px;
-  }
+.flow-list li {
+  margin-bottom: 16px;
+  color: rgba(0, 0, 0, 0.85);
 
   strong {
     display: block;
@@ -81,44 +60,15 @@
   }
 
   p {
-    margin: 4px 0 0;
+    margin: 4px 0 4px;
     color: rgba(0, 0, 0, 0.55);
     font-size: 13px;
   }
 }
 
-.status-list li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
-
-  &:last-child {
-    border-bottom: 0;
-  }
-}
-
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #52c41a;
-}
-
-.dot-warn {
-  background: #faad14;
-}
-
-.status-tag {
-  margin-left: auto;
-  color: #52c41a;
-  font-size: 12px;
-  font-weight: 500;
-
-  &.warn {
-    color: #faad14;
-  }
+.coverage-caption {
+  margin: 8px 0 0;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
 }

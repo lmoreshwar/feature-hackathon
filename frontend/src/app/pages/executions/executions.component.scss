@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filter {
+  width: 200px;
+}

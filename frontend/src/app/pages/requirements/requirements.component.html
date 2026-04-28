@@ -1,0 +1,172 @@
+<app-page-header
+  title="Requirement Input"
+  subtitle="Capture requirements from Jira, Confluence, or free text. Quantum AI will turn them into test cases."
+></app-page-header>
+
+<div nz-row [nzGutter]="[16, 16]">
+  <div nz-col [nzXs]="24" [nzLg]="10">
+    <nz-card nzTitle="New requirement" [nzBordered]="false">
+      @if (errorMessage(); as msg) {
+        <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon class="alert"></nz-alert>
+      }
+
+      <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="submit()">
+        <nz-form-item>
+          <nz-form-label nzRequired>Feature</nz-form-label>
+          <nz-form-control nzErrorTip="Feature is required">
+            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+              @for (f of features(); track f._id) {
+                <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Test suite (optional)</nz-form-label>
+          <nz-form-control>
+            <nz-select
+              formControlName="testSuiteId"
+              nzPlaceHolder="Pick a suite"
+              nzAllowClear
+              [nzDisabled]="!form.controls.featureId.value"
+            >
+              @for (s of suites(); track s._id) {
+                <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Jira ID</nz-form-label>
+          <nz-form-control>
+            <input nz-input formControlName="jiraId" placeholder="QA-123" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Confluence URL</nz-form-label>
+          <nz-form-control>
+            <input nz-input formControlName="confluenceUrl" placeholder="https://..." />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Requirement text</nz-form-label>
+          <nz-form-control>
+            <textarea
+              nz-input
+              rows="5"
+              formControlName="requirementText"
+              placeholder="As a user I want to..."
+            ></textarea>
+          </nz-form-control>
+        </nz-form-item>
+
+        <button
+          nz-button
+          nzType="primary"
+          nzBlock
+          type="submit"
+          [nzLoading]="submitting()"
+          [disabled]="form.invalid"
+        >
+          <span nz-icon nzType="rocket"></span>
+          Submit requirement
+        </button>
+      </form>
+    </nz-card>
+  </div>
+
+  <div nz-col [nzXs]="24" [nzLg]="14">
+    <nz-card nzTitle="Recent requirements" [nzBordered]="false">
+      <div class="toolbar">
+        <nz-select class="filter" nzPlaceHolder="All features" nzAllowClear nzShowSearch [formControl]="featureFilter">
+          @for (f of features(); track f._id) {
+            <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option>
+          }
+        </nz-select>
+
+        <nz-select class="filter" nzPlaceHolder="All statuses" nzAllowClear [formControl]="statusFilter">
+          @for (s of statuses; track s) {
+            <nz-option [nzValue]="s" [nzLabel]="s"></nz-option>
+          }
+        </nz-select>
+
+        <button nz-button (click)="refresh()" [nzLoading]="loading()">
+          <span nz-icon nzType="reload"></span>
+        </button>
+      </div>
+
+      <nz-table
+        nzShowSizeChanger
+        [nzData]="requirements()"
+        [nzLoading]="loading()"
+        [nzFrontPagination]="false"
+        [nzTotal]="total()"
+        [nzPageIndex]="pageIndex()"
+        [nzPageSize]="pageSize()"
+        [nzPageSizeOptions]="[10, 20, 50]"
+        (nzQueryParams)="onQueryParamsChange($event)"
+        nzSize="middle"
+      >
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th nzWidth="160px">Feature</th>
+            <th nzWidth="120px">Status</th>
+            <th nzWidth="160px">Created</th>
+            <th nzWidth="160px" nzAlign="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of requirements(); track r._id) {
+            <tr>
+              <td>
+                <div class="src-cell">{{ describe(r) }}</div>
+              </td>
+              <td>{{ featureName(r.featureId) }}</td>
+              <td><app-status-tag [status]="r.status"></app-status-tag></td>
+              <td>{{ r.createdAt | epoch: 'short' }}</td>
+              <td nzAlign="right">
+                <button
+                  nz-button
+                  nzType="text"
+                  nz-tooltip
+                  nzTooltipTitle="Mark processed"
+                  (click)="markProcessed(r)"
+                  [disabled]="r.status === 'PROCESSED'"
+                >
+                  <span nz-icon nzType="check-circle"></span>
+                </button>
+                <button
+                  nz-button
+                  nzType="text"
+                  nz-tooltip
+                  nzTooltipTitle="Mark failed"
+                  (click)="markFailed(r)"
+                  [disabled]="r.status === 'FAILED'"
+                >
+                  <span nz-icon nzType="close-circle"></span>
+                </button>
+                <button
+                  nz-button
+                  nzType="text"
+                  nzDanger
+                  nz-popconfirm
+                  nzPopconfirmTitle="Delete this requirement?"
+                  (nzOnConfirm)="delete(r)"
+                >
+                  <span nz-icon nzType="delete"></span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5"><nz-empty nzNotFoundContent="No requirements yet"></nz-empty></td></tr>
+          }
+        </tbody>
+      </nz-table>
+    </nz-card>
+  </div>
+</div>

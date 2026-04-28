@@ -25,11 +25,11 @@ import { formatError } from '../../core/interceptors/error.interceptor';
 import {
   CreateFeaturePayload,
   FEATURE_STATUSES,
-  FeatureRecord,
   FeatureStatus,
+  IFeature,
   UpdateFeaturePayload,
-} from './features.models';
-import { FeaturesService } from './features.service';
+} from '../../core/models';
+import { FeaturesService } from '../../core/services/features.service';
 
 interface FeatureForm {
   name: FormControl<string>;
@@ -81,7 +81,7 @@ export class FeatureFormDrawerComponent {
   private editingId: string | null = null;
 
   /** Emits the saved feature after a successful create or update. */
-  @Output() readonly saved = new EventEmitter<FeatureRecord>();
+  @Output() readonly saved = new EventEmitter<IFeature>();
 
   /** Width of the drawer in pixels. Defaults to 480 for a comfortable form size. */
   @Input() drawerWidth = 480;
@@ -117,7 +117,7 @@ export class FeatureFormDrawerComponent {
     this.visible.set(true);
   }
 
-  openEdit(feature: FeatureRecord): void {
+  openEdit(feature: IFeature): void {
     this.editingId = feature._id;
     this.errorMessage.set(null);
     this.form.reset({

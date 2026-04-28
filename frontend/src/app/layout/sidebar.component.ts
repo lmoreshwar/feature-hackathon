@@ -24,7 +24,14 @@ export class SidebarComponent {
   protected readonly menuItems: MenuItem[] = [
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
     { label: 'Features', icon: 'appstore', route: '/features' },
+    { label: 'Test Suites', icon: 'folder', route: '/test-suites' },
+    { label: 'Requirements', icon: 'file-text', route: '/requirements' },
+    { label: 'Test Cases', icon: 'check-square', route: '/test-cases' },
+    { label: 'Page Crawl', icon: 'global', route: '/page-elements' },
+    { label: 'Mappings', icon: 'partition', route: '/mappings' },
+    { label: 'Executions', icon: 'thunderbolt', route: '/executions' },
+    { label: 'Traceability', icon: 'cluster', route: '/traceability' },
+    { label: 'Integrations', icon: 'api', route: '/integrations' },
     { label: 'Users', icon: 'team', route: '/users' },
-    { label: 'Settings', icon: 'setting', route: '/settings' },
   ];
 }

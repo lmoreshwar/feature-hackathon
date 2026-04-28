@@ -1,0 +1,37 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  margin-bottom: 16px;
+}
+
+.filter {
+  width: 240px;
+}
+
+.tc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tc-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-title {
+  flex: 1;
+  font-weight: 500;
+  color: #1f2d3d;
+}
+
+.muted {
+  color: rgba(0, 0, 0, 0.45);
+  font-style: italic;
+}

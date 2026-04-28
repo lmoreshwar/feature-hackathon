@@ -1,79 +1,94 @@
-<h2 class="app-page-title">
-  @if (currentUser(); as user) {
-    Welcome back, {{ user.email }}
-  } @else {
-    Welcome back
-  }
-</h2>
-<p class="app-page-subtitle">Here is a quick snapshot of your workspace.</p>
+<app-page-header
+  [title]="currentUser() ? 'Welcome back, ' + currentUser()!.email : 'Welcome back'"
+  subtitle="From requirement to run — your Quantum AI workspace at a glance."
+>
+  <button nz-button nzType="default" (click)="refresh()" [nzLoading]="loading()">
+    <span nz-icon nzType="reload"></span>
+    Refresh
+  </button>
+  <a nz-button nzType="primary" routerLink="/requirements">
+    <span nz-icon nzType="rocket"></span>
+    Generate test cases
+  </a>
+</app-page-header>
 
-<div nz-row [nzGutter]="[16, 16]" class="stats-row">
-  @for (stat of stats; track stat.title) {
-    <div nz-col [nzXs]="24" [nzSm]="12" [nzLg]="6">
-      <nz-card class="stat-card" [nzBordered]="false">
-        <div class="stat-row">
-          <span class="stat-icon" [style.background]="stat.color + '1f'" [style.color]="stat.color">
-            <span nz-icon [nzType]="stat.icon"></span>
-          </span>
-          <nz-tag [nzColor]="stat.trend === 'up' ? 'green' : 'red'" class="stat-delta">
-            <span nz-icon [nzType]="stat.trend === 'up' ? 'arrow-up' : 'arrow-down'"></span>
-            {{ stat.delta }}
-          </nz-tag>
-        </div>
-        <nz-statistic [nzValue]="stat.value" [nzTitle]="stat.title"></nz-statistic>
+<nz-spin [nzSpinning]="loading()">
+  <div nz-row [nzGutter]="[16, 16]" class="stats-row">
+    @for (card of cards; track card.key) {
+      <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
+        <nz-card class="stat-card" [nzBordered]="false">
+          <div class="stat-row">
+            <span
+              class="stat-icon"
+              [style.background]="card.color + '1f'"
+              [style.color]="card.color"
+            >
+              <span nz-icon [nzType]="card.icon"></span>
+            </span>
+          </div>
+          <nz-statistic
+            [nzValue]="formatValue(card)"
+            [nzTitle]="card.title"
+          ></nz-statistic>
+          @if (card.isPercent) {
+            <nz-progress
+              [nzPercent]="getValue(card)"
+              nzSize="small"
+              [nzShowInfo]="false"
+            ></nz-progress>
+          }
+        </nz-card>
+      </div>
+    }
+  </div>
+
+  <div nz-row [nzGutter]="[16, 16]" class="content-row">
+    <div nz-col [nzXs]="24" [nzLg]="16">
+      <nz-card nzTitle="Quantum AI flow" [nzBordered]="false">
+        <ol class="flow-list">
+          <li>
+            <strong>Define a feature</strong>
+            <p>Group related test suites under a single business capability.</p>
+            <a nz-button nzType="link" routerLink="/features">Open features →</a>
+          </li>
+          <li>
+            <strong>Capture requirements</strong>
+            <p>Paste a Jira ID, Confluence URL, or free-form requirement text.</p>
+            <a nz-button nzType="link" routerLink="/requirements">Add requirement →</a>
+          </li>
+          <li>
+            <strong>Review generated test cases</strong>
+            <p>Approve, reject, or send for review the AI-generated cases.</p>
+            <a nz-button nzType="link" routerLink="/test-cases">Open review →</a>
+          </li>
+          <li>
+            <strong>Crawl pages &amp; map elements</strong>
+            <p>Bind each test step to a real selector on the AUT.</p>
+            <a nz-button nzType="link" routerLink="/page-elements">Crawl pages →</a>
+            <a nz-button nzType="link" routerLink="/mappings">Map &amp; generate →</a>
+          </li>
+          <li>
+            <strong>Run on BrowserStack</strong>
+            <p>Trigger an execution and watch the live status.</p>
+            <a nz-button nzType="link" routerLink="/executions">Trigger build →</a>
+          </li>
+        </ol>
       </nz-card>
     </div>
-  }
-</div>
 
-<div nz-row [nzGutter]="[16, 16]" class="content-row">
-  <div nz-col [nzXs]="24" [nzLg]="16">
-    <nz-card nzTitle="Recent activity" [nzBordered]="false">
-      <ul class="activity-list">
-        <li>
-          <span nz-icon nzType="login" nzTheme="outline"></span>
-          <div>
-            <strong>Successful sign-in</strong>
-            <p>Authentication tokens issued via /auth/login.</p>
-          </div>
-        </li>
-        <li>
-          <span nz-icon nzType="reload" nzTheme="outline"></span>
-          <div>
-            <strong>Tokens refreshed</strong>
-            <p>Access token rotated automatically by the auth interceptor.</p>
-          </div>
-        </li>
-        <li>
-          <span nz-icon nzType="user" nzTheme="outline"></span>
-          <div>
-            <strong>Profile loaded</strong>
-            <p>Current user fetched from /auth/me.</p>
-          </div>
-        </li>
-      </ul>
-    </nz-card>
+    <div nz-col [nzXs]="24" [nzLg]="8">
+      <nz-card nzTitle="Coverage" [nzBordered]="false">
+        <nz-progress
+          nzType="dashboard"
+          [nzPercent]="metrics().coveragePercentage"
+        ></nz-progress>
+        <p class="coverage-caption">
+          {{ metrics().approvedTestCases }} of {{ metrics().totalTestCases }} test cases approved
+        </p>
+        <p class="coverage-caption">
+          {{ metrics().automatedTestCases }} test cases automated via mapping
+        </p>
+      </nz-card>
+    </div>
   </div>
-
-  <div nz-col [nzXs]="24" [nzLg]="8">
-    <nz-card nzTitle="System status" [nzBordered]="false">
-      <ul class="status-list">
-        <li>
-          <span class="dot dot-up"></span>
-          API gateway
-          <span class="status-tag">Operational</span>
-        </li>
-        <li>
-          <span class="dot dot-up"></span>
-          Authentication
-          <span class="status-tag">Operational</span>
-        </li>
-        <li>
-          <span class="dot dot-warn"></span>
-          Background jobs
-          <span class="status-tag warn">Degraded</span>
-        </li>
-      </ul>
-    </nz-card>
-  </div>
-</div>
+</nz-spin>

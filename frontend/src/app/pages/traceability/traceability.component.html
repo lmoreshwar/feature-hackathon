@@ -1,0 +1,63 @@
+<app-page-header
+  title="Requirement Traceability"
+  subtitle="A full matrix of requirements ↔ generated test cases ↔ automation status."
+>
+  <button nz-button (click)="refresh()" [nzLoading]="loading()">
+    <span nz-icon nzType="reload"></span> Refresh
+  </button>
+</app-page-header>
+
+<nz-card [nzBordered]="false">
+  <div class="toolbar">
+    <nz-select class="filter" nzPlaceHolder="All features" nzAllowClear nzShowSearch [formControl]="featureFilter">
+      @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+    </nz-select>
+  </div>
+
+  <nz-table [nzData]="rows()" [nzLoading]="loading()" nzSize="middle" [nzPageSize]="20">
+    <thead>
+      <tr>
+        <th nzWidth="160px">Source</th>
+        <th nzWidth="200px">Reference</th>
+        <th nzWidth="200px">Feature</th>
+        <th>Test cases</th>
+        <th nzWidth="120px">Coverage</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of rows(); track r.requirementId) {
+        <tr>
+          <td><nz-tag>{{ r.requirementSource }}</nz-tag></td>
+          <td>
+            @if (r.requirementSource === 'CONFLUENCE') {
+              <a [href]="r.requirementKey" target="_blank" rel="noopener">{{ r.requirementKey }}</a>
+            } @else {
+              {{ r.requirementKey }}
+            }
+          </td>
+          <td>{{ featureName(r.featureId) }}</td>
+          <td>
+            @if (r.testCases.length === 0) {
+              <span class="muted">No test cases generated yet</span>
+            } @else {
+              <ul class="tc-list">
+                @for (tc of r.testCases; track tc._id) {
+                  <li>
+                    <span class="tc-title">{{ tc.title }}</span>
+                    <app-status-tag [status]="tc.status"></app-status-tag>
+                    @if (tc.automated) {
+                      <nz-tag nzColor="purple">Automated</nz-tag>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </td>
+          <td><app-status-tag [status]="r.status"></app-status-tag></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5"><nz-empty nzNotFoundContent="No data yet"></nz-empty></td></tr>
+      }
+    </tbody>
+  </nz-table>
+</nz-card>

@@ -36,8 +36,13 @@
 
 .feature-name {
   font-weight: 600;
-  color: #1f2d3d;
+  color: #1677ff;
   font-size: 14px;
+  cursor: pointer;
+}
+
+.feature-name:hover {
+  text-decoration: underline;
 }
 
 .feature-desc {

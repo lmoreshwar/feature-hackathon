@@ -1,0 +1,128 @@
+<app-page-header title="Page Crawl" subtitle="Capture page elements from the AUT and store reusable selectors.">
+  <button nz-button (click)="refresh()" [nzLoading]="loading()"><span nz-icon nzType="reload"></span> Refresh</button>
+  <button nz-button nzType="primary" (click)="openCreate()">
+    <span nz-icon nzType="plus"></span> Add element
+  </button>
+</app-page-header>
+
+<div nz-row [nzGutter]="[16, 16]">
+  <div nz-col [nzXs]="24" [nzLg]="9">
+    <nz-card nzTitle="Crawl a page" [nzBordered]="false">
+      @if (errorMessage(); as msg) {
+        <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
+      }
+      <form nz-form nzLayout="vertical" [formGroup]="crawlForm" (ngSubmit)="runCrawl()">
+        <nz-form-item>
+          <nz-form-label nzRequired>Feature</nz-form-label>
+          <nz-form-control nzErrorTip="Feature is required">
+            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+              @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label nzRequired>Page URL</nz-form-label>
+          <nz-form-control nzErrorTip="Page URL is required">
+            <input nz-input formControlName="pageUrl" placeholder="https://app.example.com/login" />
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label>Page name</nz-form-label>
+          <nz-form-control>
+            <input nz-input formControlName="pageName" placeholder="Login" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <button
+          nz-button
+          nzType="primary"
+          nzBlock
+          type="submit"
+          [nzLoading]="crawling()"
+          [disabled]="crawlForm.invalid"
+        >
+          <span nz-icon nzType="global"></span> Crawl page
+        </button>
+      </form>
+      <p class="tip">
+        The crawler returns a representative element set, persists them via the
+        bulk endpoint, and you can refine each entry afterwards.
+      </p>
+    </nz-card>
+  </div>
+
+  <div nz-col [nzXs]="24" [nzLg]="15">
+    <nz-card nzTitle="Stored page elements" [nzBordered]="false">
+      <div class="toolbar">
+        <nz-input-group nzPrefixIcon="search" class="search">
+          <input nz-input type="search" placeholder="Search by element name" [formControl]="searchControl" />
+        </nz-input-group>
+        <nz-select class="filter" nzPlaceHolder="All features" nzAllowClear nzShowSearch [formControl]="featureControl">
+          @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+        </nz-select>
+        <nz-select class="filter" nzPlaceHolder="All types" nzAllowClear [formControl]="typeControl">
+          @for (t of elementTypes; track t) { <nz-option [nzValue]="t" [nzLabel]="t"></nz-option> }
+        </nz-select>
+      </div>
+
+      <nz-table
+        nzShowSizeChanger
+        [nzData]="elements()"
+        [nzLoading]="loading()"
+        [nzFrontPagination]="false"
+        [nzTotal]="total()"
+        [nzPageIndex]="pageIndex()"
+        [nzPageSize]="pageSize()"
+        [nzPageSizeOptions]="[10, 20, 50]"
+        (nzQueryParams)="onQueryParamsChange($event)"
+        nzSize="middle"
+      >
+        <thead>
+          <tr>
+            <th>Element</th>
+            <th nzWidth="100px">Type</th>
+            <th>Selector</th>
+            <th nzWidth="80px">Stable</th>
+            <th nzWidth="160px">Updated</th>
+            <th nzWidth="120px" nzAlign="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of elements(); track e._id) {
+            <tr>
+              <td>
+                <strong>{{ e.elementName }}</strong>
+                <div class="meta">{{ e.pageName || '—' }} · {{ e.pageUrl }}</div>
+              </td>
+              <td><nz-tag>{{ e.elementType }}</nz-tag></td>
+              <td>
+                <code class="selector">{{ e.selectorType }}: {{ e.selector }}</code>
+              </td>
+              <td>
+                @if (e.isStable) {
+                  <nz-tag nzColor="green">Stable</nz-tag>
+                } @else {
+                  <nz-tag nzColor="red">Flaky</nz-tag>
+                }
+              </td>
+              <td>{{ e.updatedAt | epoch: 'short' }}</td>
+              <td nzAlign="right">
+                <button nz-button nzType="text" nz-tooltip nzTooltipTitle="Edit" (click)="openEdit(e)">
+                  <span nz-icon nzType="edit"></span>
+                </button>
+                <button nz-button nzType="text" nzDanger nz-popconfirm
+                  nzPopconfirmTitle="Delete this element?" (nzOnConfirm)="delete(e)">
+                  <span nz-icon nzType="delete"></span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><nz-empty nzNotFoundContent="No page elements yet"></nz-empty></td></tr>
+          }
+        </tbody>
+      </nz-table>
+    </nz-card>
+  </div>
+</div>
+
+<app-page-element-form-drawer [features]="features()" (saved)="onSaved()"></app-page-element-form-drawer>

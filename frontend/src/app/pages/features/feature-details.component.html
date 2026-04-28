@@ -1,0 +1,96 @@
+<app-page-header
+  [title]="feature() ? feature()!.name : 'Feature'"
+  [subtitle]="feature()?.description || 'Feature overview, suites and live metrics.'"
+>
+  <a nz-button nzType="default" routerLink="/features">
+    <span nz-icon nzType="arrow-left"></span>
+    All features
+  </a>
+  <a nz-button nzType="primary" routerLink="/test-suites">
+    <span nz-icon nzType="plus"></span>
+    Manage suites
+  </a>
+</app-page-header>
+
+<nz-spin [nzSpinning]="loading()">
+  @if (feature(); as f) {
+    <div nz-row [nzGutter]="[16, 16]">
+      <div nz-col [nzXs]="24" [nzLg]="16">
+        <nz-card nzTitle="Details" [nzBordered]="false">
+          <nz-descriptions nzBordered nzSize="small" [nzColumn]="2">
+            <nz-descriptions-item nzTitle="Status">
+              <app-status-tag [status]="f.status"></app-status-tag>
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Created">{{ f.createdAt | epoch: 'medium' }}</nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Updated">{{ f.updatedAt | epoch: 'medium' }}</nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Description">
+              {{ f.description || '—' }}
+            </nz-descriptions-item>
+          </nz-descriptions>
+        </nz-card>
+
+        <nz-card class="suites-card" nzTitle="Test suites" [nzBordered]="false">
+          <nz-list [nzDataSource]="suites()" [nzRenderItem]="suiteItem" [nzNoResult]="emptySuites">
+            <ng-template #suiteItem let-suite>
+              <nz-list-item>
+                <nz-list-item-meta
+                  [nzTitle]="suite.moduleName"
+                  [nzDescription]="suite.description || 'No description'"
+                ></nz-list-item-meta>
+                <ul nz-list-item-actions>
+                  <nz-list-item-action>
+                    <span>Tests: {{ suite.totalTests }}</span>
+                  </nz-list-item-action>
+                  <nz-list-item-action>
+                    <span>Pass %: {{ suite.passPercentage }}</span>
+                  </nz-list-item-action>
+                  <nz-list-item-action>
+                    <app-status-tag [status]="suite.status"></app-status-tag>
+                  </nz-list-item-action>
+                </ul>
+              </nz-list-item>
+            </ng-template>
+            <ng-template #emptySuites>No suites yet — create one from Test Suites.</ng-template>
+          </nz-list>
+        </nz-card>
+      </div>
+
+      <div nz-col [nzXs]="24" [nzLg]="8">
+        <nz-card nzTitle="Coverage" [nzBordered]="false">
+          <div class="coverage-wrap">
+            <nz-progress
+              nzType="dashboard"
+              [nzPercent]="f.coveragePercentage ?? 0"
+            ></nz-progress>
+          </div>
+          <p class="coverage-caption">
+            {{ metrics()?.approvedTestCases ?? 0 }} of {{ metrics()?.totalTestCases ?? 0 }} test cases approved
+          </p>
+        </nz-card>
+
+        <nz-card class="metric-card" [nzBordered]="false" nzTitle="Live counts">
+          <div nz-row [nzGutter]="[12, 12]">
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Suites" [nzValue]="metrics()?.totalSuites ?? 0"></nz-statistic>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Test cases" [nzValue]="metrics()?.totalTestCases ?? 0"></nz-statistic>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Approved" [nzValue]="metrics()?.approvedTestCases ?? 0"></nz-statistic>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Automated" [nzValue]="metrics()?.automatedTestCases ?? 0"></nz-statistic>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Page elements" [nzValue]="metrics()?.totalPageElements ?? 0"></nz-statistic>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-statistic nzTitle="Executions" [nzValue]="metrics()?.totalExecutions ?? 0"></nz-statistic>
+            </div>
+          </div>
+        </nz-card>
+      </div>
+    </div>
+  }
+</nz-spin>

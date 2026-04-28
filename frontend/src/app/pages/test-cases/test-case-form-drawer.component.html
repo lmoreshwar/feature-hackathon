@@ -1,0 +1,147 @@
+<nz-drawer
+  [nzVisible]="visible()"
+  [nzTitle]="drawerTitle"
+  [nzWidth]="560"
+  [nzMaskClosable]="!submitting()"
+  [nzClosable]="!submitting()"
+  [nzFooter]="footer"
+  (nzOnClose)="close()"
+>
+  <ng-container *nzDrawerContent>
+    @if (errorMessage(); as msg) {
+      <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon class="alert"></nz-alert>
+    }
+    <nz-spin [nzSpinning]="submitting()">
+      <form nz-form nzLayout="vertical" [formGroup]="form" (ngSubmit)="submit()">
+        <nz-form-item>
+          <nz-form-label nzRequired>Feature</nz-form-label>
+          <nz-form-control nzErrorTip="Feature is required">
+            <nz-select
+              formControlName="featureId"
+              nzPlaceHolder="Select a feature"
+              nzShowSearch
+              (ngModelChange)="onFeatureChange($event)"
+              [nzDisabled]="isEditing"
+            >
+              @for (f of features; track f._id) {
+                <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Test suite</nz-form-label>
+          <nz-form-control nzErrorTip="Suite is required">
+            <nz-select
+              formControlName="testSuiteId"
+              nzPlaceHolder="Select a suite"
+              nzShowSearch
+              [nzDisabled]="isEditing || !form.controls.featureId.value"
+            >
+              @for (s of availableSuites(); track s._id) {
+                <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Title</nz-form-label>
+          <nz-form-control nzErrorTip="Title is required (min 3 chars)">
+            <input nz-input formControlName="title" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Description</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input rows="2" formControlName="description"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+
+        <div nz-row [nzGutter]="12">
+          <div nz-col nzSpan="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Priority</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="priority">
+                  @for (p of priorities; track p) {
+                    <nz-option [nzValue]="p" [nzLabel]="p"></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Type</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="type">
+                  @for (t of types; track t) {
+                    <nz-option [nzValue]="t" [nzLabel]="t"></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <nz-form-item>
+          <nz-form-label>Preconditions</nz-form-label>
+          <nz-form-control>
+            <div formArrayName="preconditions" class="lines">
+              @for (ctrl of preconditions.controls; track $index) {
+                <div class="line-row">
+                  <input nz-input [formControlName]="$index" placeholder="Precondition" />
+                  <button nz-button nzType="text" nzDanger (click)="removePrecondition($index)">
+                    <span nz-icon nzType="delete"></span>
+                  </button>
+                </div>
+              }
+            </div>
+            <button nz-button nzType="dashed" nzBlock (click)="addPrecondition()" type="button">
+              <span nz-icon nzType="plus"></span> Add precondition
+            </button>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Steps</nz-form-label>
+          <nz-form-control>
+            <div formArrayName="steps" class="lines">
+              @for (ctrl of steps.controls; track $index) {
+                <div class="line-row">
+                  <span class="step-num">{{ $index + 1 }}.</span>
+                  <input nz-input [formControlName]="$index" placeholder="Step description" />
+                  <button nz-button nzType="text" nzDanger (click)="removeStep($index)" [disabled]="steps.length <= 1">
+                    <span nz-icon nzType="delete"></span>
+                  </button>
+                </div>
+              }
+            </div>
+            <button nz-button nzType="dashed" nzBlock (click)="addStep()" type="button">
+              <span nz-icon nzType="plus"></span> Add step
+            </button>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>Expected result</nz-form-label>
+          <nz-form-control nzErrorTip="Expected result is required">
+            <textarea nz-input rows="3" formControlName="expectedResult"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+      </form>
+    </nz-spin>
+  </ng-container>
+</nz-drawer>
+
+<ng-template #footer>
+  <div style="text-align: right">
+    <button nz-button (click)="close()" [disabled]="submitting()" style="margin-right: 8px">Cancel</button>
+    <button nz-button nzType="primary" (click)="submit()" [nzLoading]="submitting()" [disabled]="form.invalid">
+      {{ isEditing ? 'Save changes' : 'Create test case' }}
+    </button>
+  </div>
+</ng-template>

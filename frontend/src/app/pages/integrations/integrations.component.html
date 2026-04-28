@@ -1,0 +1,240 @@
+<app-page-header
+  title="Settings · Integrations"
+  subtitle="Connect Quantum AI to Jira, Confluence, your LLM provider, Git, and BrowserStack."
+>
+  <button nz-button (click)="refresh()" [nzLoading]="loading()">
+    <span nz-icon nzType="reload"></span> Refresh
+  </button>
+</app-page-header>
+
+@if (errorMessage(); as msg) {
+  <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
+}
+
+<nz-spin [nzSpinning]="loading()">
+  <nz-tabs nzType="card">
+    <nz-tab nzTitle="Jira">
+      <nz-card [nzBordered]="false">
+        <form nz-form nzLayout="vertical" [formGroup]="jiraForm">
+          <nz-form-item>
+            <nz-form-label nzRequired>Base URL</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="baseUrl" placeholder="https://acme.atlassian.net" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Email</nz-form-label>
+            <nz-form-control nzErrorTip="A valid email is required">
+              <input nz-input formControlName="email" placeholder="qa@acme.com" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>API token</nz-form-label>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="jiraSuffix">
+                <input nz-input formControlName="apiToken"
+                  [type]="isVisible('jira') ? 'text' : 'password'"
+                  [placeholder]="current()?.jira?.apiTokenMasked || 'Paste a new token to update'" />
+              </nz-input-group>
+              <ng-template #jiraSuffix>
+                <span nz-icon [nzType]="isVisible('jira') ? 'eye-invisible' : 'eye'"
+                  (click)="toggleTokenVisible('jira')" style="cursor: pointer"></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger nz-popconfirm
+              nzPopconfirmTitle="Clear Jira settings?" (nzOnConfirm)="clear('jira')"
+              [disabled]="!current()?.jira">
+              <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button nzType="primary" (click)="save('jira')"
+              [nzLoading]="saving() === 'jira'">
+              <span nz-icon nzType="save"></span> Save Jira
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    </nz-tab>
+
+    <nz-tab nzTitle="Confluence">
+      <nz-card [nzBordered]="false">
+        <form nz-form nzLayout="vertical" [formGroup]="confluenceForm">
+          <nz-form-item>
+            <nz-form-label nzRequired>Base URL</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="baseUrl" placeholder="https://acme.atlassian.net/wiki" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Email</nz-form-label>
+            <nz-form-control nzErrorTip="A valid email is required">
+              <input nz-input formControlName="email" placeholder="qa@acme.com" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>API token</nz-form-label>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="confSuffix">
+                <input nz-input formControlName="apiToken"
+                  [type]="isVisible('confluence') ? 'text' : 'password'"
+                  [placeholder]="current()?.confluence?.apiTokenMasked || 'Paste a new token to update'" />
+              </nz-input-group>
+              <ng-template #confSuffix>
+                <span nz-icon [nzType]="isVisible('confluence') ? 'eye-invisible' : 'eye'"
+                  (click)="toggleTokenVisible('confluence')" style="cursor: pointer"></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger nz-popconfirm
+              nzPopconfirmTitle="Clear Confluence settings?" (nzOnConfirm)="clear('confluence')"
+              [disabled]="!current()?.confluence">
+              <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button nzType="primary" (click)="save('confluence')"
+              [nzLoading]="saving() === 'confluence'">
+              <span nz-icon nzType="save"></span> Save Confluence
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    </nz-tab>
+
+    <nz-tab nzTitle="LLM">
+      <nz-card [nzBordered]="false">
+        <form nz-form nzLayout="vertical" [formGroup]="llmForm">
+          <nz-form-item>
+            <nz-form-label nzRequired>Provider</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="provider">
+                @for (p of llmProviders; track p) { <nz-option [nzValue]="p" [nzLabel]="p"></nz-option> }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Model</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="model" placeholder="gpt-4o, claude-3-5-sonnet, ..." />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>API key</nz-form-label>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="llmSuffix">
+                <input nz-input formControlName="apiKey"
+                  [type]="isVisible('llm') ? 'text' : 'password'"
+                  [placeholder]="current()?.llm?.apiKeyMasked || 'Paste a new key to update'" />
+              </nz-input-group>
+              <ng-template #llmSuffix>
+                <span nz-icon [nzType]="isVisible('llm') ? 'eye-invisible' : 'eye'"
+                  (click)="toggleTokenVisible('llm')" style="cursor: pointer"></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger nz-popconfirm
+              nzPopconfirmTitle="Clear LLM settings?" (nzOnConfirm)="clear('llm')"
+              [disabled]="!current()?.llm">
+              <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button nzType="primary" (click)="save('llm')"
+              [nzLoading]="saving() === 'llm'">
+              <span nz-icon nzType="save"></span> Save LLM
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    </nz-tab>
+
+    <nz-tab nzTitle="Git">
+      <nz-card [nzBordered]="false">
+        <form nz-form nzLayout="vertical" [formGroup]="gitForm">
+          <nz-form-item>
+            <nz-form-label nzRequired>Provider</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="provider">
+                @for (p of gitProviders; track p) { <nz-option [nzValue]="p" [nzLabel]="p"></nz-option> }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Repository URL</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="repoUrl" placeholder="git@github.com:acme/quantum-tests.git" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzRequired>Branch</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="branch" placeholder="main" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>Token</nz-form-label>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="gitSuffix">
+                <input nz-input formControlName="token"
+                  [type]="isVisible('git') ? 'text' : 'password'"
+                  [placeholder]="current()?.git?.tokenMasked || 'Paste a new token to update'" />
+              </nz-input-group>
+              <ng-template #gitSuffix>
+                <span nz-icon [nzType]="isVisible('git') ? 'eye-invisible' : 'eye'"
+                  (click)="toggleTokenVisible('git')" style="cursor: pointer"></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger nz-popconfirm
+              nzPopconfirmTitle="Clear Git settings?" (nzOnConfirm)="clear('git')"
+              [disabled]="!current()?.git">
+              <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button nzType="primary" (click)="save('git')"
+              [nzLoading]="saving() === 'git'">
+              <span nz-icon nzType="save"></span> Save Git
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    </nz-tab>
+
+    <nz-tab nzTitle="BrowserStack">
+      <nz-card [nzBordered]="false">
+        <form nz-form nzLayout="vertical" [formGroup]="bsForm">
+          <nz-form-item>
+            <nz-form-label nzRequired>Username</nz-form-label>
+            <nz-form-control nzErrorTip="Required">
+              <input nz-input formControlName="username" placeholder="qa_acme" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>Access key</nz-form-label>
+            <nz-form-control>
+              <nz-input-group [nzSuffix]="bsSuffix">
+                <input nz-input formControlName="accessKey"
+                  [type]="isVisible('browserstack') ? 'text' : 'password'"
+                  [placeholder]="current()?.browserstack?.accessKeyMasked || 'Paste a new key to update'" />
+              </nz-input-group>
+              <ng-template #bsSuffix>
+                <span nz-icon [nzType]="isVisible('browserstack') ? 'eye-invisible' : 'eye'"
+                  (click)="toggleTokenVisible('browserstack')" style="cursor: pointer"></span>
+              </ng-template>
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger nz-popconfirm
+              nzPopconfirmTitle="Clear BrowserStack settings?" (nzOnConfirm)="clear('browserstack')"
+              [disabled]="!current()?.browserstack">
+              <span nz-icon nzType="delete"></span> Clear
+            </button>
+            <button nz-button nzType="primary" (click)="save('browserstack')"
+              [nzLoading]="saving() === 'browserstack'">
+              <span nz-icon nzType="save"></span> Save BrowserStack
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    </nz-tab>
+  </nz-tabs>
+</nz-spin>

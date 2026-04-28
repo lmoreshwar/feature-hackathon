@@ -1,5 +1,16 @@
-<h2 class="app-page-title">Features</h2>
-<p class="app-page-subtitle">Track features, their lifecycle status and coverage.</p>
+<app-page-header
+  title="Features"
+  subtitle="Track features, their lifecycle status and coverage."
+>
+  <button nz-button nzType="default" (click)="refresh()" [nzLoading]="loading()">
+    <span nz-icon nzType="reload"></span>
+    Refresh
+  </button>
+  <button nz-button nzType="primary" (click)="openCreate()">
+    <span nz-icon nzType="plus"></span>
+    New feature
+  </button>
+</app-page-header>
 
 <nz-card [nzBordered]="false" class="features-card">
   <div class="toolbar">
@@ -22,18 +33,6 @@
         <nz-option [nzValue]="status" [nzLabel]="status"></nz-option>
       }
     </nz-select>
-
-    <span class="toolbar-spacer"></span>
-
-    <button nz-button nzType="default" (click)="refresh()" [nzLoading]="loading()">
-      <span nz-icon nzType="reload"></span>
-      Refresh
-    </button>
-
-    <button nz-button nzType="primary" (click)="openCreate()">
-      <span nz-icon nzType="plus"></span>
-      New feature
-    </button>
   </div>
 
   <nz-table
@@ -51,12 +50,12 @@
     <thead>
       <tr>
         <th>Name</th>
-        <th nzWidth="110px">Status</th>
+        <th nzWidth="120px">Status</th>
         <th nzWidth="100px" nzAlign="right">Suites</th>
         <th nzWidth="120px" nzAlign="right">Test cases</th>
         <th nzWidth="180px">Coverage</th>
         <th nzWidth="180px">Updated</th>
-        <th nzWidth="120px" nzAlign="right">Actions</th>
+        <th nzWidth="180px" nzAlign="right">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -64,7 +63,7 @@
         <tr>
           <td>
             <div class="feature-cell">
-              <span class="feature-name">{{ feature.name }}</span>
+              <a class="feature-name" (click)="openDetails(feature)">{{ feature.name }}</a>
               @if (feature.description) {
                 <span class="feature-desc" nz-tooltip [nzTooltipTitle]="feature.description">
                   {{ feature.description }}
@@ -73,7 +72,7 @@
             </div>
           </td>
           <td>
-            <nz-tag [nzColor]="statusColors[feature.status]">{{ feature.status }}</nz-tag>
+            <app-status-tag [status]="feature.status"></app-status-tag>
           </td>
           <td nzAlign="right">{{ feature.totalSuites ?? 0 }}</td>
           <td nzAlign="right">{{ feature.totalTestCases ?? 0 }}</td>
@@ -84,8 +83,17 @@
               nzSize="small"
             ></nz-progress>
           </td>
-          <td>{{ feature.updatedAt ? (feature.updatedAt | date: 'medium') : '-' }}</td>
+          <td>{{ feature.updatedAt | epoch: 'medium' }}</td>
           <td nzAlign="right">
+            <button
+              nz-button
+              nzType="text"
+              nz-tooltip
+              nzTooltipTitle="Open"
+              (click)="openDetails(feature)"
+            >
+              <span nz-icon nzType="eye"></span>
+            </button>
             <button
               nz-button
               nzType="text"
@@ -94,6 +102,19 @@
               (click)="openEdit(feature)"
             >
               <span nz-icon nzType="edit"></span>
+            </button>
+            <button
+              nz-button
+              nzType="text"
+              nz-tooltip
+              nzTooltipTitle="Archive"
+              nz-popconfirm
+              nzPopconfirmTitle="Archive this feature?"
+              nzPopconfirmPlacement="topRight"
+              (nzOnConfirm)="archive(feature)"
+              [disabled]="feature.status === 'ARCHIVED'"
+            >
+              <span nz-icon nzType="inbox"></span>
             </button>
             <button
               nz-button

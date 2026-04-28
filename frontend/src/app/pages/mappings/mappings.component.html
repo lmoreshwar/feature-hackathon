@@ -1,0 +1,124 @@
+<app-page-header
+  title="Test Case ↔ Element Mapping"
+  subtitle="Bind a test case to real selectors, generate the script, and ship it to Git."
+></app-page-header>
+
+<div nz-row [nzGutter]="[16, 16]">
+  <div nz-col [nzXs]="24" [nzLg]="10">
+    <nz-card nzTitle="Pick test case" [nzBordered]="false">
+      @if (errorMessage(); as msg) {
+        <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon style="margin-bottom: 12px"></nz-alert>
+      }
+      <form nz-form nzLayout="vertical" [formGroup]="form">
+        <nz-form-item>
+          <nz-form-label nzRequired>Feature</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="featureId" nzPlaceHolder="Select a feature" nzShowSearch>
+              @for (f of features(); track f._id) { <nz-option [nzValue]="f._id" [nzLabel]="f.name"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label nzRequired>Test suite</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="testSuiteId" nzPlaceHolder="Select a suite"
+              [nzDisabled]="!form.controls.featureId.value">
+              @for (s of suites(); track s._id) { <nz-option [nzValue]="s._id" [nzLabel]="s.moduleName"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label nzRequired>Test case</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="testCaseId" nzPlaceHolder="Select a test case" nzShowSearch
+              [nzDisabled]="!form.controls.testSuiteId.value">
+              @for (tc of testCases(); track tc._id) {
+                <nz-option [nzValue]="tc._id" [nzLabel]="tc.title"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label nzRequired>Script type</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="scriptType">
+              @for (t of scriptTypes; track t) { <nz-option [nzValue]="t" [nzLabel]="t"></nz-option> }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+      </form>
+    </nz-card>
+
+    <nz-card class="elements-card" nzTitle="Page elements" [nzBordered]="false">
+      <nz-spin [nzSpinning]="loading()">
+        @if (pageElements().length === 0) {
+          <nz-empty nzNotFoundContent="No page elements for this feature"></nz-empty>
+        } @else {
+          <label nz-checkbox
+            [nzChecked]="allChecked"
+            [nzIndeterminate]="someChecked"
+            (nzCheckedChange)="toggleAllElements($event)"
+            class="select-all"
+          >Select all</label>
+
+          <div class="element-list">
+            @for (el of pageElements(); track el._id) {
+              <label nz-checkbox
+                [nzChecked]="isSelected(el._id)"
+                (nzCheckedChange)="toggleElement(el._id, $event)"
+                class="element-row"
+              >
+                <div>
+                  <strong>{{ el.elementName }}</strong>
+                  <nz-tag class="type-tag">{{ el.elementType }}</nz-tag>
+                  <div class="meta">{{ el.selectorType }}: <code>{{ el.selector }}</code></div>
+                </div>
+              </label>
+            }
+          </div>
+        }
+      </nz-spin>
+
+      <div class="actions">
+        <button nz-button nzType="primary" (click)="save()" [nzLoading]="saving()" [disabled]="form.invalid">
+          <span nz-icon nzType="save"></span> Save mapping
+        </button>
+      </div>
+    </nz-card>
+  </div>
+
+  <div nz-col [nzXs]="24" [nzLg]="14">
+    <nz-card [nzBordered]="false">
+      <div class="meta-row">
+        <div class="meta-row__title">
+          Generated script
+          @if (mapping()?.scriptType) {
+            <nz-tag class="type-tag">{{ mapping()!.scriptType }}</nz-tag>
+          }
+        </div>
+        <div class="meta-row__actions">
+          @if (mapping()?.gitPushStatus) {
+            <app-status-tag [status]="mapping()!.gitPushStatus!"></app-status-tag>
+          }
+          <button nz-button (click)="copyScript()" [disabled]="!mapping()?.generatedScript">
+            <span nz-icon nzType="copy"></span> Copy
+          </button>
+          <button nz-button nzType="primary" (click)="generate()" [nzLoading]="generating()"
+            [disabled]="!mapping()">
+            <span nz-icon nzType="experiment"></span> Generate script
+          </button>
+          <button nz-button (click)="pushToGit()" [nzLoading]="pushing()"
+            [disabled]="!mapping()?.generatedScript">
+            <span nz-icon nzType="github"></span> Push to Git
+          </button>
+        </div>
+      </div>
+
+      @if (mapping()?.generatedScript; as script) {
+        <pre class="script">{{ script }}</pre>
+      } @else {
+        <nz-empty nzNotFoundContent="Pick a test case and save the mapping to generate a script"></nz-empty>
+      }
+    </nz-card>
+  </div>
+</div>
