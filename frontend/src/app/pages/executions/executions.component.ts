@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -14,7 +22,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule, NzTableQueryParams } from 'ng-zorro-antd/table';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { distinctUntilChanged, finalize } from 'rxjs';
+import { Subject, distinctUntilChanged, finalize, switchMap, timer } from 'rxjs';
 
 import {
   EXECUTION_PROVIDERS,
@@ -39,6 +47,12 @@ interface TriggerForm {
   buildName: FormControl<string>;
   provider: FormControl<ExecutionProvider>;
 }
+
+const POLL_INTERVAL_MS = 4000;
+const ACTIVE_STATUSES: ReadonlySet<ExecutionStatus> = new Set([
+  'QUEUED',
+  'RUNNING',
+]);
 
 @Component({
   selector: 'app-executions',
@@ -71,6 +85,7 @@ export class ExecutionsComponent implements OnInit {
   private readonly featuresService = inject(FeaturesService);
   private readonly suitesService = inject(TestSuitesService);
   private readonly message = inject(NzMessageService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly providers = EXECUTION_PROVIDERS;
   protected readonly statuses = EXECUTION_STATUSES;
@@ -95,6 +110,8 @@ export class ExecutionsComponent implements OnInit {
     provider: this.fb.nonNullable.control<ExecutionProvider>('BROWSERSTACK', [Validators.required]),
   });
 
+  private readonly pollTrigger = new Subject<void>();
+
   ngOnInit(): void {
     this.loadFeatures();
     this.fetch();
@@ -114,6 +131,30 @@ export class ExecutionsComponent implements OnInit {
         this.fetch();
       }),
     );
+
+    // Auto-refresh while any execution is QUEUED/RUNNING. The runner mutates
+    // the same execution document on the server (status/passed/failed/urls),
+    // so we just re-fetch the visible page until everything is settled.
+    this.pollTrigger
+      .pipe(
+        switchMap(() => timer(POLL_INTERVAL_MS, POLL_INTERVAL_MS)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (this.hasActiveBuild()) {
+          this.fetch(true);
+        }
+      });
+    this.pollTrigger.next();
+  }
+
+  protected hasActiveBuild(): boolean {
+    return this.executions().some((e) => ACTIVE_STATUSES.has(e.status));
+  }
+
+  protected isHttpUrl(value: string | undefined | null): boolean {
+    if (!value) return false;
+    return /^https?:\/\//i.test(value.trim());
   }
 
   protected onQueryParamsChange(p: NzTableQueryParams): void {
@@ -147,9 +188,14 @@ export class ExecutionsComponent implements OnInit {
       .subscribe({
         next: (saved) => {
           if (saved) {
-            this.message.success(`Build "${saved.buildName}" queued`);
+            const where =
+              saved.provider === 'BROWSERSTACK'
+                ? 'queued on BrowserStack'
+                : 'queued';
+            this.message.success(`Build "${saved.buildName}" ${where}`);
             this.form.patchValue({ buildName: '' });
             this.fetch();
+            this.pollTrigger.next();
           }
         },
         error: (e: unknown) => this.errorMessage.set(toErrorMessage(e)),
@@ -184,8 +230,8 @@ export class ExecutionsComponent implements OnInit {
     });
   }
 
-  private fetch(): void {
-    this.loading.set(true);
+  private fetch(silent = false): void {
+    if (!silent) this.loading.set(true);
     const filters: Record<string, unknown> = {};
     if (this.statusFilter.value) filters['status'] = this.statusFilter.value;
     if (this.featureFilter.value) filters['featureId'] = this.featureFilter.value;
@@ -197,15 +243,17 @@ export class ExecutionsComponent implements OnInit {
         filters,
         sort: { createdAt: 'desc' },
       })
-      .pipe(finalize(() => this.loading.set(false)))
+      .pipe(finalize(() => !silent && this.loading.set(false)))
       .subscribe({
         next: (res) => {
           this.executions.set(res.items);
           this.total.set(res.total);
         },
         error: () => {
-          this.executions.set([]);
-          this.total.set(0);
+          if (!silent) {
+            this.executions.set([]);
+            this.total.set(0);
+          }
         },
       });
   }

@@ -1,0 +1,253 @@
+<app-page-header
+  title="Coverage Review"
+  subtitle="Compare a requirement against your APPROVED test cases. Returns a deterministic coverage percentage — no LLM cost."
+>
+  <a nz-button nzType="default" routerLink="/test-cases">
+    <span nz-icon nzType="arrow-left"></span>
+    Back to Test Cases
+  </a>
+</app-page-header>
+
+<div nz-row [nzGutter]="[16, 16]">
+  <!-- ============================================================== -->
+  <!-- LEFT  ::  requirement input                                     -->
+  <!-- ============================================================== -->
+  <div nz-col [nzXs]="24" [nzLg]="9">
+    <nz-card [nzBordered]="false" class="card panel-input">
+      <div class="panel-title">
+        <span nz-icon nzType="form" class="panel-icon"></span>
+        <div>
+          <div class="t">1. Requirement</div>
+          <div class="s">Pick a source and paste / fetch the content.</div>
+        </div>
+      </div>
+
+      @if (error(); as msg) {
+        <nz-alert nzType="error" [nzMessage]="msg" nzShowIcon class="alert"></nz-alert>
+      }
+
+      <nz-radio-group
+        [ngModel]="inputType()"
+        (ngModelChange)="setInputType($event)"
+        nzButtonStyle="solid"
+        class="source-picker"
+      >
+        <label nz-radio-button nzValue="jira">
+          <span nz-icon nzType="bug"></span>&nbsp;Jira
+        </label>
+        <label nz-radio-button nzValue="confluence">
+          <span nz-icon nzType="file-text"></span>&nbsp;Confluence
+        </label>
+        <label nz-radio-button nzValue="text">
+          <span nz-icon nzType="form"></span>&nbsp;Plain text
+        </label>
+      </nz-radio-group>
+
+      @if (inputType() === 'jira') {
+        <nz-form-item>
+          <nz-form-label nzRequired>Jira ticket ID</nz-form-label>
+          <nz-form-control
+            nzExtra="e.g. PROJ-123. Backend will fetch it via your Jira integration in Settings."
+          >
+            <input
+              nz-input
+              placeholder="PROJ-123"
+              [ngModel]="jiraId()"
+              (ngModelChange)="jiraId.set($event)"
+            />
+          </nz-form-control>
+        </nz-form-item>
+      }
+
+      @if (inputType() === 'confluence') {
+        <nz-form-item>
+          <nz-form-label nzRequired>Confluence page URL</nz-form-label>
+          <nz-form-control nzExtra="The backend will fetch the page content using your Confluence integration in Settings.">
+            <nz-input-group nzSearch [nzAddOnAfter]="browseTpl">
+              <input
+                nz-input
+                placeholder="https://your-org.atlassian.net/wiki/..."
+                [ngModel]="confluenceUrl()"
+                (ngModelChange)="confluenceUrl.set($event)"
+              />
+            </nz-input-group>
+            <ng-template #browseTpl>
+              <button nz-button (click)="browseConfluence()">
+                <span nz-icon nzType="folder-open"></span>
+                Browse
+              </button>
+            </ng-template>
+          </nz-form-control>
+        </nz-form-item>
+      }
+
+      @if (inputType() === 'text') {
+        <nz-form-item>
+          <nz-form-label nzRequired>Requirement text</nz-form-label>
+          <nz-form-control>
+            <textarea
+              nz-input
+              rows="9"
+              placeholder="Paste the requirement, user story, acceptance criteria..."
+              [ngModel]="text()"
+              (ngModelChange)="text.set($event)"
+            ></textarea>
+          </nz-form-control>
+        </nz-form-item>
+      }
+
+      <div class="actions">
+        <button
+          nz-button
+          nzType="primary"
+          nzSize="large"
+          [nzLoading]="loading()"
+          [disabled]="!canRun"
+          (click)="run()"
+        >
+          <span nz-icon nzType="thunderbolt"></span>
+          Analyze Coverage
+        </button>
+        <button nz-button nzSize="large" (click)="reset()" [disabled]="loading()">
+          <span nz-icon nzType="reload"></span>
+          Reset
+        </button>
+      </div>
+    </nz-card>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MIDDLE  ::  big gauge + result breakdown                        -->
+  <!-- ============================================================== -->
+  <div nz-col [nzXs]="24" [nzLg]="7">
+    <nz-card [nzBordered]="false" class="card panel-result">
+      <div class="panel-title">
+        <span nz-icon nzType="dashboard" class="panel-icon"></span>
+        <div>
+          <div class="t">2. Coverage</div>
+          <div class="s">Computed against approved test cases.</div>
+        </div>
+      </div>
+
+      <nz-spin [nzSpinning]="loading()">
+        @if (result(); as r) {
+          <div class="gauge">
+            <nz-progress
+              nzType="dashboard"
+              [nzPercent]="r.percentage"
+              [nzWidth]="240"
+              [nzStrokeWidth]="10"
+              [nzStrokeColor]="coverageColor"
+            ></nz-progress>
+            <div class="gauge-label" [style.color]="coverageColor">
+              {{ coverageLabel }}
+            </div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="m-val">{{ r.total }}</div>
+              <div class="m-lbl">Requirements found</div>
+            </div>
+            <div class="metric">
+              <div class="m-val ok">{{ r.full }}</div>
+              <div class="m-lbl">Fully covered</div>
+            </div>
+            <div class="metric">
+              <div class="m-val warn">{{ r.partial }}</div>
+              <div class="m-lbl">Partially covered</div>
+            </div>
+            <div class="metric">
+              <div class="m-val danger">{{ r.none }}</div>
+              <div class="m-lbl">Not covered</div>
+            </div>
+          </div>
+
+          <div class="meta">
+            <span><span nz-icon nzType="experiment"></span> {{ r.testCasesEvaluated }} test cases evaluated</span>
+            <span class="src" nz-tooltip [nzTooltipTitle]="r.source">
+              <span nz-icon nzType="link"></span> {{ r.source }}
+            </span>
+          </div>
+        } @else {
+          <div class="empty-gauge">
+            <nz-progress
+              nzType="dashboard"
+              [nzPercent]="0"
+              [nzWidth]="240"
+              [nzStrokeWidth]="10"
+              nzStrokeColor="#d9d9d9"
+            ></nz-progress>
+            <p class="hint">
+              Pick a requirement source on the left and click <strong>Analyze Coverage</strong>.
+            </p>
+          </div>
+        }
+      </nz-spin>
+    </nz-card>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- RIGHT  ::  approved test cases pool                              -->
+  <!-- ============================================================== -->
+  <div nz-col [nzXs]="24" [nzLg]="8">
+    <nz-card [nzBordered]="false" class="card panel-cases">
+      <div class="panel-title with-meta">
+        <span nz-icon nzType="check-square" class="panel-icon"></span>
+        <div class="title-block">
+          <div class="t">3. Approved test cases</div>
+          <div class="s">
+            These are the cases compared against the requirement.
+          </div>
+        </div>
+        <div class="counts">
+          <nz-tag nzColor="success">{{ approvedTotal() }} approved</nz-tag>
+          <nz-tag nzColor="blue">
+            <span nz-icon nzType="robot"></span> {{ automationCount() }} automation
+          </nz-tag>
+        </div>
+      </div>
+
+      <nz-input-group nzPrefixIcon="search" class="cases-search">
+        <input
+          nz-input
+          type="search"
+          placeholder="Search approved test cases by title"
+          [formControl]="approvedSearch"
+        />
+      </nz-input-group>
+
+      <nz-spin [nzSpinning]="approvedLoading()">
+        @if (approved().length > 0) {
+          <nz-list nzSize="small" class="cases-list">
+            @for (tc of approved(); track tc._id) {
+              <nz-list-item class="case-item">
+                <div class="case-row">
+                  <div class="case-main">
+                    <div class="case-title">{{ tc.title }}</div>
+                    @if (tc.description) {
+                      <div class="case-desc">{{ tc.description }}</div>
+                    }
+                    <div class="case-tags">
+                      <app-status-tag [status]="tc.priority"></app-status-tag>
+                      <app-status-tag [status]="tc.type"></app-status-tag>
+                      @if (tc.automationFeasible) {
+                        <nz-tag nzColor="blue">
+                          <span nz-icon nzType="robot"></span> Automation
+                        </nz-tag>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </nz-list-item>
+            }
+          </nz-list>
+        } @else {
+          <nz-empty
+            nzNotFoundContent="No approved test cases yet. Approve some on the Test Cases page first."
+          ></nz-empty>
+        }
+      </nz-spin>
+    </nz-card>
+  </div>
+</div>

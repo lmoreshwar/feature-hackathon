@@ -18,6 +18,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { finalize } from 'rxjs';
 
 import {
@@ -48,6 +49,7 @@ import { toErrorMessage } from '../../shared/utils/error.util';
     NzAlertModule,
     NzSpinModule,
     NzIconModule,
+    NzSwitchModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './test-case-form-drawer.component.html',
@@ -86,6 +88,10 @@ export class TestCaseFormDrawerComponent {
     title: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]),
     description: this.fb.nonNullable.control(''),
     expectedResult: this.fb.nonNullable.control('', [Validators.required]),
+    testData: this.fb.nonNullable.control(''),
+    tagsCsv: this.fb.nonNullable.control(''),
+    comments: this.fb.nonNullable.control(''),
+    automationFeasible: this.fb.nonNullable.control(false),
     priority: this.fb.nonNullable.control<TestCasePriority>('MEDIUM', [Validators.required]),
     type: this.fb.nonNullable.control<TestCaseType>('FUNCTIONAL', [Validators.required]),
     steps: this.fb.array<FormControl<string>>([]),
@@ -109,6 +115,10 @@ export class TestCaseFormDrawerComponent {
       title: '',
       description: '',
       expectedResult: '',
+      testData: '',
+      tagsCsv: '',
+      comments: '',
+      automationFeasible: false,
       priority: 'MEDIUM',
       type: 'FUNCTIONAL',
     });
@@ -132,6 +142,14 @@ export class TestCaseFormDrawerComponent {
       title: tc.title,
       description: tc.description ?? '',
       expectedResult: tc.expectedResult,
+      testData: tc.testData ?? '',
+      // Show user-facing tags but hide the auto-managed "Automation"
+      // string — the toggle below is the source of truth for that.
+      tagsCsv: (tc.tags ?? [])
+        .filter((t) => t.toLowerCase() !== 'automation')
+        .join(', '),
+      comments: tc.comments ?? '',
+      automationFeasible: !!tc.automationFeasible,
       priority: tc.priority,
       type: tc.type,
     });
@@ -143,6 +161,14 @@ export class TestCaseFormDrawerComponent {
 
     this.loadSuitesFor(tc.featureId);
     this.visible.set(true);
+  }
+
+  protected parseTags(csv: string): string[] {
+    return (csv ?? '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+      .slice(0, 8);
   }
 
   protected loadSuitesFor(featureId: string): void {
@@ -230,6 +256,10 @@ export class TestCaseFormDrawerComponent {
       title: v.title.trim(),
       description: v.description.trim() || undefined,
       expectedResult: v.expectedResult.trim(),
+      testData: v.testData.trim() || undefined,
+      tags: this.parseTags(v.tagsCsv),
+      comments: v.comments.trim() || undefined,
+      automationFeasible: v.automationFeasible,
       priority: v.priority,
       type: v.type,
       steps,
@@ -246,6 +276,10 @@ export class TestCaseFormDrawerComponent {
       title: v.title.trim(),
       description: v.description.trim() || undefined,
       expectedResult: v.expectedResult.trim(),
+      testData: v.testData.trim() || undefined,
+      tags: this.parseTags(v.tagsCsv),
+      comments: v.comments.trim() || undefined,
+      automationFeasible: v.automationFeasible,
       priority: v.priority,
       type: v.type,
       steps,

@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TEST_CASE_MODEL_NAME, TestCaseSchema } from '../../common/schemas';
 import { AuthModule } from '../auth/auth.module';
 import { FeatureModule } from '../feature/feature.module';
+import { IntegrationModule } from '../integration/integration.module';
 import { TestSuiteModule } from '../test-suite/test-suite.module';
 import { TestCaseController } from './test-case.controller';
 import { TestCaseRepository } from './test-case.repository';
@@ -16,6 +17,7 @@ import { TestCaseService } from './test-case.service';
     AuthModule,
     FeatureModule,
     TestSuiteModule,
+    IntegrationModule,
   ],
   controllers: [TestCaseController],
   providers: [TestCaseService, TestCaseRepository],

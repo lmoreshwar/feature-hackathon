@@ -3,6 +3,7 @@ import { TestExecutionDocument } from '../../common/schemas';
 import { PaginatedResult } from '../../common/interfaces/api-response.interface';
 import { paginate } from '../../common/utils/search-query.util';
 import { assertValidObjectId } from '../../common/utils/object-id.util';
+import { BrowserStackRunnerService } from './browserstack-runner.service';
 import { CreateExecutionDto } from './dto/create-execution.dto';
 import { SearchExecutionDto } from './dto/search-execution.dto';
 import { UpdateExecutionDto } from './dto/update-execution.dto';
@@ -14,7 +15,10 @@ import { ExecutionRepository } from './test-execution.repository';
 
 @Injectable()
 export class ExecutionService {
-  constructor(private readonly executionRepository: ExecutionRepository) {}
+  constructor(
+    private readonly executionRepository: ExecutionRepository,
+    private readonly browserStackRunner: BrowserStackRunnerService,
+  ) {}
 
   async trigger(
     dto: CreateExecutionDto,
@@ -25,18 +29,40 @@ export class ExecutionService {
       assertValidObjectId(dto.testSuiteId, 'testSuiteId');
     }
 
+    const provider = dto.provider ?? 'LOCAL';
+
     const created = await this.executionRepository.create({
       featureId: dto.featureId,
       testSuiteId: dto.testSuiteId ?? null,
       testCaseIds: dto.testCaseIds ?? [],
       buildName: dto.buildName.trim(),
-      provider: dto.provider ?? 'LOCAL',
+      provider,
       status: dto.status ?? 'QUEUED',
       totalTests: dto.testCaseIds?.length ?? 0,
       triggeredBy,
     });
 
-    return this.toRecord(created);
+    const record = this.toRecord(created);
+
+    // Kick off the BrowserStack run asynchronously. The HTTP response goes
+    // back immediately with the QUEUED record so the UI can start polling;
+    // the runner mutates this same execution document as it progresses.
+    if (provider === 'BROWSERSTACK') {
+      void this.browserStackRunner.runInBackground(
+        {
+          executionId: record._id,
+          featureId: record.featureId,
+          testSuiteId: record.testSuiteId,
+          testCaseIds: record.testCaseIds,
+          buildName: record.buildName,
+          baseUrl: dto.baseUrl,
+          caps: dto.browserStack,
+        },
+        triggeredBy,
+      );
+    }
+
+    return record;
   }
 
   async getById(id: string): Promise<ExecutionRecord> {

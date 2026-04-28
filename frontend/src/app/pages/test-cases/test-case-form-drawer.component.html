@@ -132,6 +132,42 @@
             <textarea nz-input rows="3" formControlName="expectedResult"></textarea>
           </nz-form-control>
         </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Test data</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input rows="2" formControlName="testData"
+              placeholder='e.g. username=standard_user, password=secret_sauce'></textarea>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Tags</nz-form-label>
+          <nz-form-control>
+            <input nz-input formControlName="tagsCsv"
+              placeholder='Comma separated, e.g. Login, Authentication, Smoke' />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>Comments</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input rows="2" formControlName="comments"
+              placeholder="Optional notes for the tester"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label>
+            <span nz-icon nzType="robot"></span>&nbsp;Automation feasible
+          </nz-form-label>
+          <nz-form-control>
+            <nz-switch formControlName="automationFeasible"></nz-switch>
+            <span style="margin-left: 12px; color: rgba(0,0,0,0.45); font-size: 12px;">
+              Adds the literal "Automation" tag so other tools can pick this case for automation.
+            </span>
+          </nz-form-control>
+        </nz-form-item>
       </form>
     </nz-spin>
   </ng-container>
