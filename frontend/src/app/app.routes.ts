@@ -75,6 +75,14 @@ export const appRoutes: Routes = [
         title: 'Test case review · Quantum AI',
       },
       {
+        path: 'coverage-review',
+        loadComponent: () =>
+          import('./pages/coverage-review/coverage-review.component').then(
+            (m) => m.CoverageReviewComponent,
+          ),
+        title: 'Coverage Review · Quantum AI',
+      },
+      {
         path: 'page-elements',
         loadComponent: () =>
           import('./pages/page-elements/page-elements.component').then(

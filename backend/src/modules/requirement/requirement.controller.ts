@@ -19,13 +19,17 @@ import { CreateRequirementDto } from './dto/create-requirement.dto';
 import { SearchRequirementDto } from './dto/search-requirement.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { RequirementService } from './requirement.service';
+import { TestCaseGeneratorService } from './test-case-generator.service';
 
 @ApiTags('requirements')
 @ApiBearerAuth()
 @UseGuards(AccessTokenGuard)
 @Controller('requirements')
 export class RequirementController {
-  constructor(private readonly requirementService: RequirementService) {}
+  constructor(
+    private readonly requirementService: RequirementService,
+    private readonly testCaseGenerator: TestCaseGeneratorService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -83,6 +87,20 @@ export class RequirementController {
   async markFailed(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const updated = await this.requirementService.markStatus(id, 'FAILED');
     return ok('Requirement marked as failed', updated);
+  }
+
+  @Post(':id/generate-test-cases')
+  @HttpCode(HttpStatus.OK)
+  async generateTestCases(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseGenerator.generate(id, user.sub);
+    const msg =
+      result.generated > 0
+        ? `Generated ${result.generated} test case${result.generated === 1 ? '' : 's'} (${result.source.toLowerCase()})`
+        : 'No test cases were generated';
+    return ok(msg, result);
   }
 
   @Delete(':id')

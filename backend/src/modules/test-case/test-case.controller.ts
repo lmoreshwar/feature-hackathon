@@ -16,6 +16,7 @@ import { AccessTokenGuard } from '../auth/access-token.guard';
 import { AuthenticatedUser } from '../auth/auth.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BulkCreateTestCaseDto } from './dto/bulk-create-test-case.dto';
+import { CoverageReviewDto } from './dto/coverage-review.dto';
 import { CreateTestCaseDto } from './dto/create-test-case.dto';
 import { SearchTestCaseDto } from './dto/search-test-case.dto';
 import { UpdateTestCaseDto } from './dto/update-test-case.dto';
@@ -53,6 +54,16 @@ export class TestCaseController {
   async search(@Body() dto: SearchTestCaseDto): Promise<ApiResponse<unknown>> {
     const result = await this.testCaseService.search(dto);
     return ok('Fetched successfully', result);
+  }
+
+  @Post('coverage')
+  @HttpCode(HttpStatus.OK)
+  async coverage(
+    @Body() dto: CoverageReviewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseService.coverageReview(dto, user.sub);
+    return ok('Coverage computed', result);
   }
 
   @Get('by-suite/:testSuiteId')
@@ -97,6 +108,46 @@ export class TestCaseController {
   async needsReview(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const updated = await this.testCaseService.setStatus(id, 'NEEDS_REVIEW');
     return ok('Test case marked as needs review', updated);
+  }
+
+  @Post('bulk-approve')
+  @HttpCode(HttpStatus.OK)
+  async bulkApprove(
+    @Body() body: { ids: string[] },
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseService.bulkSetStatus(
+      body?.ids ?? [],
+      'APPROVED',
+    );
+    return ok(`Approved ${result.updated} test case(s)`, result);
+  }
+
+  @Post('bulk-reject')
+  @HttpCode(HttpStatus.OK)
+  async bulkReject(
+    @Body() body: { ids: string[] },
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseService.bulkSetStatus(
+      body?.ids ?? [],
+      'REJECTED',
+    );
+    return ok(`Rejected ${result.updated} test case(s)`, result);
+  }
+
+  @Post('recompute-automation')
+  @HttpCode(HttpStatus.OK)
+  async recomputeAutomation(
+    @Body() body: { featureId?: string; testSuiteId?: string },
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.testCaseService.recomputeAutomation({
+      featureId: body?.featureId,
+      testSuiteId: body?.testSuiteId,
+    });
+    const message =
+      result.changed === 0
+        ? `Re-evaluated ${result.scanned} test case(s); no changes needed.`
+        : `Re-evaluated ${result.scanned} test case(s); flipped ${result.changed} to match the new heuristic.`;
+    return ok(message, result);
   }
 
   @Delete(':id')

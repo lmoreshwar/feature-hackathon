@@ -2,6 +2,16 @@
   <button nz-button (click)="refresh()" [nzLoading]="loading()"><span nz-icon nzType="reload"></span> Refresh</button>
 </app-page-header>
 
+@if (form.controls.provider.value === 'BROWSERSTACK') {
+  <nz-alert
+    nzType="info"
+    nzShowIcon
+    nzMessage="BrowserStack is the active provider"
+    nzDescription="Builds run on the BrowserStack Automate cloud using the credentials saved under Settings → Integrations → BrowserStack. Each automation-feasible test case spawns its own session; the live session URL appears in the Actions column once the run starts."
+    style="margin-bottom: 16px"
+  ></nz-alert>
+}
+
 <div nz-row [nzGutter]="[16, 16]">
   <div nz-col [nzXs]="24" [nzLg]="9">
     <nz-card nzTitle="Trigger a build" [nzBordered]="false">
@@ -95,23 +105,31 @@
               <td>{{ e.passedTests }} / {{ e.failedTests }} / {{ e.totalTests }}</td>
               <td>{{ e.createdAt | epoch: 'short' }}</td>
               <td nzAlign="right">
-                @if (e.reportUrl) {
-                  <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Report"
+                @if (isHttpUrl(e.reportUrl)) {
+                  <a nz-button nzType="text" nz-tooltip
+                    [nzTooltipTitle]="e.provider === 'BROWSERSTACK' ? 'Open BrowserStack session' : 'Open report'"
                     [href]="e.reportUrl" target="_blank" rel="noopener">
                     <span nz-icon nzType="link"></span>
                   </a>
                 }
-                @if (e.videoUrl) {
+                @if (isHttpUrl(e.videoUrl) && e.videoUrl !== e.reportUrl) {
                   <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Video"
                     [href]="e.videoUrl" target="_blank" rel="noopener">
                     <span nz-icon nzType="play-circle"></span>
                   </a>
                 }
                 @if (e.logsUrl) {
-                  <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Logs"
-                    [href]="e.logsUrl" target="_blank" rel="noopener">
-                    <span nz-icon nzType="file-text"></span>
-                  </a>
+                  @if (isHttpUrl(e.logsUrl)) {
+                    <a nz-button nzType="text" nz-tooltip nzTooltipTitle="Logs"
+                      [href]="e.logsUrl" target="_blank" rel="noopener">
+                      <span nz-icon nzType="file-text"></span>
+                    </a>
+                  } @else {
+                    <button nz-button nzType="text" nz-tooltip
+                      [nzTooltipTitle]="e.logsUrl">
+                      <span nz-icon nzType="info-circle"></span>
+                    </button>
+                  }
                 }
                 <button nz-button nzType="text" nz-tooltip nzTooltipTitle="Cancel"
                   (click)="cancel(e)" [disabled]="e.status === 'CANCELLED' || e.status === 'PASSED' || e.status === 'FAILED'">

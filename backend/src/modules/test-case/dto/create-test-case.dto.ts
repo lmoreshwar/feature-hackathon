@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsMongoId,
   IsObject,
@@ -53,6 +54,35 @@ export class CreateTestCaseDto {
   @IsString()
   @MinLength(3)
   expectedResult: string;
+
+  @ApiPropertyOptional({
+    example: 'username=standard_user, password=secret_sauce',
+    description:
+      'Concrete test data the tester should use (valid values for positive, invalid/empty for negative, boundary values for boundary tests, etc.)',
+  })
+  @IsOptional()
+  @IsString()
+  testData?: string;
+
+  @ApiPropertyOptional({ type: [String], example: ['Login', 'Authentication'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional({ example: 'Verify on Chrome and Firefox.' })
+  @IsOptional()
+  @IsString()
+  comments?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Marks this test case as suitable for automation (deterministic, programmatically verifiable, no subjective judgement).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  automationFeasible?: boolean;
 
   @ApiPropertyOptional({ enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] })
   @IsOptional()

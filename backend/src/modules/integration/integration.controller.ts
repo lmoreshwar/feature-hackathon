@@ -21,6 +21,7 @@ import {
   IntegrationTesterService,
 } from './integration-tester.service';
 import { IntegrationService } from './integration.service';
+import { JiraFetcherService } from './jira-fetcher.service';
 
 @ApiTags('integrations')
 @ApiBearerAuth()
@@ -30,6 +31,7 @@ export class IntegrationController {
   constructor(
     private readonly integrationService: IntegrationService,
     private readonly integrationTester: IntegrationTesterService,
+    private readonly jiraFetcher: JiraFetcherService,
   ) {}
 
   @Get('me')
@@ -67,5 +69,14 @@ export class IntegrationController {
   ): Promise<ApiResponse<unknown>> {
     const result = await this.integrationTester.test(user.sub, section);
     return ok(result.message, result);
+  }
+
+  @Get('jira/issues/:key')
+  async fetchJiraIssue(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('key') key: string,
+  ): Promise<ApiResponse<unknown>> {
+    const result = await this.jiraFetcher.fetchTicket(user.sub, key);
+    return ok('Jira issue fetched successfully', result);
   }
 }

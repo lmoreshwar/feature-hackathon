@@ -6,11 +6,20 @@ import {
   CreateRequirementPayload,
   EMPTY_PAGE,
   IRequirementSource,
+  ITestCase,
   PaginatedResult,
   SearchRequest,
   UpdateRequirementPayload,
 } from '../models';
 import { ApiService } from './api.service';
+
+export interface GenerateTestCasesResult {
+  source: 'LLM' | 'TEMPLATE';
+  generated: number;
+  testCases: ITestCase[];
+  requirement: IRequirementSource;
+  warnings: string[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class RequirementsService {
@@ -79,5 +88,20 @@ export class RequirementsService {
     return this.api
       .delete<ApiEnvelope<unknown>>(`${this.base}/${id}`)
       .pipe(map(() => undefined));
+  }
+
+  generateTestCases(id: string): Observable<GenerateTestCasesResult> {
+    return this.api
+      .post<ApiEnvelope<GenerateTestCasesResult>>(
+        `${this.base}/${id}/generate-test-cases`,
+      )
+      .pipe(
+        map((res) => {
+          if (!res.data) {
+            throw new Error(res.message ?? 'Empty response from server');
+          }
+          return res.data;
+        }),
+      );
   }
 }

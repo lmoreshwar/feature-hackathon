@@ -21,6 +21,10 @@ export interface CreateTestCaseData {
   preconditions?: string[];
   steps: string[];
   expectedResult: string;
+  testData?: string | null;
+  tags?: string[];
+  comments?: string | null;
+  automationFeasible?: boolean;
   priority?: TestCasePriority;
   type?: TestCaseType;
   status?: TestCaseStatus;
@@ -34,6 +38,10 @@ export interface UpdateTestCaseData {
   preconditions?: string[];
   steps?: string[];
   expectedResult?: string;
+  testData?: string | null;
+  tags?: string[];
+  comments?: string | null;
+  automationFeasible?: boolean;
   priority?: TestCasePriority;
   type?: TestCaseType;
   status?: TestCaseStatus;
@@ -102,6 +110,7 @@ export class TestCaseRepository {
           'priority',
           'type',
           'createdBy',
+          'automationFeasible',
         ],
       },
     );
@@ -127,5 +136,9 @@ export class TestCaseRepository {
 
   async countAll(): Promise<number> {
     return this.model.countDocuments().exec();
+  }
+
+  async findApproved(): Promise<TestCaseDocument[]> {
+    return this.model.find({ status: 'APPROVED' }).sort({ createdAt: -1 }).exec();
   }
 }
