@@ -25,8 +25,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private async connect(): Promise<void> {
     const uri =
       this.configService.get<string>('MONGO_URI') ??
-      this.configService.get<string>('MONGODB_URI') ??
-      'mongodb://admin:SecurePassword123!@localhost:27017/hackathon_dev?authSource=admin';
+      this.configService.get<string>('MONGODB_URI');
+
+    if (!uri) {
+      throw new Error(
+        'MongoDB connection string is missing. Set MONGO_URI (or MONGODB_URI) in your .env file.',
+      );
+    }
 
     try {
       await mongoose.connect(uri);

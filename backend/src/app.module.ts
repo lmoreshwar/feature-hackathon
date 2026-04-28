@@ -24,12 +24,17 @@ import { UserModule } from './modules/user/user.module';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri:
+      useFactory: (config: ConfigService) => {
+        const uri =
           config.get<string>('MONGO_URI') ??
-          config.get<string>('MONGODB_URI') ??
-          'mongodb://localhost:27017/hackathon',
-      }),
+          config.get<string>('MONGODB_URI');
+        if (!uri) {
+          throw new Error(
+            'MongoDB connection string is missing. Set MONGO_URI (or MONGODB_URI) in your .env file.',
+          );
+        }
+        return { uri };
+      },
     }),
     AuthModule,
     UserModule,
