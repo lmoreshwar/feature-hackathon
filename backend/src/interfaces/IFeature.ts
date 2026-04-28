@@ -15,5 +15,5 @@ export interface IFeature extends IBaseCollection {
   totalTestCases?: number;
   coveragePercentage?: number;
 
-  createdBy: string; // IUser._id
+  createdBy?: string; // IUser._id
 }

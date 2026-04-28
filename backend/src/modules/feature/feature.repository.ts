@@ -7,11 +7,11 @@ import { FeatureStatus } from './feature.interface';
 export interface CreateFeatureData {
   name: string;
   description?: string;
-  status: FeatureStatus;
+  status?: FeatureStatus;
   totalSuites?: number;
   totalTestCases?: number;
   coveragePercentage?: number;
-  createdBy: string;
+  createdBy?: string;
 }
 
 export interface UpdateFeatureData {

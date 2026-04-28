@@ -18,7 +18,6 @@ export class FeatureService {
 
   async createFeature(dto: CreateFeatureDto): Promise<FeatureRecord> {
     const name = this.normalizeName(dto.name);
-    this.assertValidObjectId(dto.createdBy, 'createdBy');
 
     const exists = await this.featureRepository.existsByName(name);
     if (exists) {
@@ -26,10 +25,9 @@ export class FeatureService {
     }
 
     const created = await this.featureRepository.create({
-      ...dto,
       name,
       description: dto.description?.trim(),
-      status: dto.status ?? 'DRAFT',
+      status: 'DRAFT',
     });
 
     if (!created) {
@@ -168,7 +166,7 @@ export class FeatureService {
       totalSuites?: number;
       totalTestCases?: number;
       coveragePercentage?: number;
-      createdBy: string;
+      createdBy?: string;
       createdAt: number;
       updatedAt: number;
     };

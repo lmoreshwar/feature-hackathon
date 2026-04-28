@@ -39,7 +39,7 @@ export const FeatureSchema = new Schema(
     },
     createdBy: {
       type: String,
-      required: true,
+      default: null,
       trim: true,
     },
     createdAt: {
