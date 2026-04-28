@@ -19,6 +19,7 @@ import { CreateMappingDto } from './dto/create-mapping.dto';
 import { GenerateScriptDto } from './dto/generate-script.dto';
 import { PushToGitDto } from './dto/push-to-git.dto';
 import { SearchMappingDto } from './dto/search-mapping.dto';
+import { SuggestMappingDto } from './dto/suggest-mapping.dto';
 import { UpdateMappingDto } from './dto/update-mapping.dto';
 import { MappingService } from './testcase-mapping.service';
 
@@ -52,6 +53,19 @@ export class MappingController {
   ): Promise<ApiResponse<unknown>> {
     const found = await this.mappingService.getByTestCaseId(testCaseId);
     return ok('Mapping fetched successfully', found);
+  }
+
+  @Post('suggest')
+  @HttpCode(HttpStatus.OK)
+  async suggest(
+    @Body() dto: SuggestMappingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ApiResponse<unknown>> {
+    const suggestion = await this.mappingService.suggestForTestCase(
+      dto.testCaseId,
+      user.sub,
+    );
+    return ok('Mapping suggestions generated', suggestion);
   }
 
   @Get(':id')

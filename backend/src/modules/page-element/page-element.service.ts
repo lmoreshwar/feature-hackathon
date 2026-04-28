@@ -9,6 +9,13 @@ import { SearchPageElementDto } from './dto/search-page-element.dto';
 import { UpdatePageElementDto } from './dto/update-page-element.dto';
 import { PageElementRecord } from './page-element.interface';
 import { PageElementRepository } from './page-element.repository';
+import {
+  PageGroup,
+  PomFile,
+  PomFramework,
+  generatePomFiles,
+  groupElementsByPage,
+} from './pom-generator.util';
 
 @Injectable()
 export class PageElementService {
@@ -59,6 +66,19 @@ export class PageElementService {
     assertValidObjectId(featureId, 'featureId');
     const items = await this.pageElementRepository.findByFeatureId(featureId);
     return items.map((i) => this.toRecord(i));
+  }
+
+  async getPagesByFeature(featureId: string): Promise<PageGroup[]> {
+    const elements = await this.listByFeature(featureId);
+    return groupElementsByPage(elements);
+  }
+
+  async getPomByFeature(
+    featureId: string,
+    framework: PomFramework,
+  ): Promise<PomFile[]> {
+    const groups = await this.getPagesByFeature(featureId);
+    return generatePomFiles(framework, groups);
   }
 
   async search(
